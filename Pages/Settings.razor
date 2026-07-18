@@ -1,0 +1,330 @@
+@page "/settings"
+@inject MockDataService DataService
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Settings — CafeSphere</PageTitle>
+
+<div class="settings-layout animate-slide-up">
+    <!-- Settings Workspace Grid -->
+    <div class="settings-grid-container">
+        <!-- Left: Settings navigation list -->
+        <div class="settings-nav-panel glass-card">
+            <span class="small-label section-title">Settings Groups</span>
+            <div class="settings-tabs">
+                <button class="settings-tab @(selectedTab == "general" ? "active" : "")" @onclick='() => SetTab("general")'>
+                    <i data-lucide="store"></i>
+                    <span>Store General</span>
+                </button>
+                <button class="settings-tab @(selectedTab == "taxes" ? "active" : "")" @onclick='() => SetTab("taxes")'>
+                    <i data-lucide="percent"></i>
+                    <span>Taxes & Promo Codes</span>
+                </button>
+                <button class="settings-tab @(selectedTab == "appearance" ? "active" : "")" @onclick='() => SetTab("appearance")'>
+                    <i data-lucide="paint-brush"></i>
+                    <span>UI & Accent Themes</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Right: Active config form -->
+        <div class="settings-form-panel glass-card">
+            @if (selectedTab == "general")
+            {
+                <!-- General profile form -->
+                <div class="settings-pane-form animate-fade-in">
+                    <div class="glass-card-header">
+                        <h3>General Cafe Profile</h3>
+                        <span class="caption">Basic configurations of your cafe branch</span>
+                    </div>
+
+                    <div class="form-body-wrap">
+                        <div class="input-group-glass">
+                            <input id="store-name" @bind="storeName" type="text" class="input-glass" />
+                            <label for="store-name">Store Name</label>
+                        </div>
+                        <div class="input-group-glass">
+                            <input id="store-address" @bind="storeAddress" type="text" class="input-glass" />
+                            <label for="store-address">Branch Address</label>
+                        </div>
+                        <div class="input-group-glass">
+                            <input id="store-phone" @bind="storePhone" type="text" class="input-glass" />
+                            <label for="store-phone">Contact Phone</label>
+                        </div>
+                    </div>
+
+                    <div class="form-footer-wrap">
+                        <button class="btn-pill btn-primary" @onclick="SaveChanges">Save Profile Changes</button>
+                    </div>
+                </div>
+            }
+            else if (selectedTab == "taxes")
+            {
+                <!-- Tax configurations -->
+                <div class="settings-pane-form animate-fade-in">
+                    <div class="glass-card-header">
+                        <h3>Taxes & Promo Codes</h3>
+                        <span class="caption">Establish local vat rates and discount registries</span>
+                    </div>
+
+                    <div class="form-body-wrap">
+                        <div class="input-group-glass">
+                            <input id="tax-rate" @bind="taxRate" type="number" step="0.1" class="input-glass" />
+                            <label for="tax-rate">Sales Tax Rate (%)</label>
+                        </div>
+
+                        <div class="input-group-glass">
+                            <input id="promo-code" @bind="promoCode" type="text" class="input-glass" />
+                            <label for="promo-code">Standard Loyalty Promo Code</label>
+                        </div>
+                    </div>
+
+                    <div class="form-footer-wrap">
+                        <button class="btn-pill btn-primary" @onclick="SaveChanges">Save Financial Configs</button>
+                    </div>
+                </div>
+            }
+            else if (selectedTab == "appearance")
+            {
+                <!-- UI Mode Theme -->
+                <div class="settings-pane-form animate-fade-in">
+                    <div class="glass-card-header">
+                        <h3>UI Customization System</h3>
+                        <span class="caption">Modify design variables of the interface shell</span>
+                    </div>
+
+                    <div class="form-body-wrap">
+                        <div class="theme-accent-section">
+                            <span class="small-label sec-title">Brand Accent Color</span>
+                            <div class="accent-colors">
+                                <div class="accent-circle green active"></div>
+                                <div class="accent-circle orange"></div>
+                                <div class="accent-circle blue"></div>
+                            </div>
+                        </div>
+
+                        <div class="theme-accent-section">
+                            <span class="small-label sec-title">Interface Glass blur level</span>
+                            <div class="slider-control">
+                                <input type="range" min="10" max="40" @bind="glassBlur" class="glass-slider" />
+                                <span class="caption">@glassBlur px blur radius</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-footer-wrap">
+                        <button class="btn-pill btn-primary" @onclick="SaveAppearance">Apply Visual Design</button>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Settings Scoped CSS styling */
+    .settings-layout {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+        height: calc(100vh - 120px);
+    }
+
+    .settings-grid-container {
+        display: grid;
+        grid-template-columns: 1fr 2.5fr;
+        gap: var(--space-md);
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .settings-nav-panel {
+        padding: var(--space-md);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+
+    .section-title {
+        color: var(--color-text-muted);
+        font-size: 10px;
+        margin-bottom: 4px;
+    }
+
+    .settings-tabs {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .settings-tab {
+        background: none;
+        border: 1px solid transparent;
+        padding: 12px 14px;
+        border-radius: 12px;
+        font-family: var(--font-secondary);
+        font-size: 13px;
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: all var(--transition-fast);
+        text-align: left;
+    }
+
+    .settings-tab:hover {
+        background: rgba(0,0,0,0.02);
+        color: var(--color-primary);
+    }
+
+    .settings-tab.active {
+        background: white;
+        border-color: var(--color-border);
+        color: var(--color-primary);
+        box-shadow: var(--shadow-soft);
+    }
+
+    .settings-tab i {
+        width: 16px;
+        height: 16px;
+        color: currentColor;
+    }
+
+    .settings-form-panel {
+        padding: var(--space-md);
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+    }
+
+    .settings-pane-form {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+
+    .form-body-wrap {
+        margin: var(--space-md) 0;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+        flex: 1;
+    }
+
+    .form-footer-wrap {
+        border-top: 1px solid var(--color-border-light);
+        padding-top: var(--space-sm);
+        margin-top: auto;
+    }
+
+    /* Appearance accent nodes */
+    .theme-accent-section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: var(--space-sm);
+    }
+
+    .sec-title {
+        color: var(--color-text-muted);
+        font-size: 10px;
+    }
+
+    .accent-colors {
+        display: flex;
+        gap: 12px;
+    }
+
+    .accent-circle {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: transform var(--transition-fast);
+    }
+
+    .accent-circle:hover {
+        transform: scale(1.1);
+    }
+
+    .accent-circle.active {
+        border-color: var(--color-primary);
+        box-shadow: var(--shadow-soft);
+    }
+
+    .accent-circle.green { background: var(--color-primary); }
+    .accent-circle.orange { background: var(--color-secondary); }
+    .accent-circle.blue { background: #007AFF; }
+
+    .slider-control {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+    }
+
+    .glass-slider {
+        flex: 1;
+        height: 6px;
+        background: rgba(0,0,0,0.05);
+        border-radius: 99px;
+        outline: none;
+        cursor: pointer;
+    }
+
+    @@media (max-width: 900px) {
+        .settings-grid-container {
+            grid-template-columns: 1fr;
+            height: auto;
+            overflow: visible;
+        }
+        .settings-nav-panel {
+            height: 220px;
+        }
+    }
+</style>
+
+@code {
+    private string selectedTab = "general";
+
+    // Form states
+    private string storeName = "CafeSphere Flagship Branch";
+    private string storeAddress = "345 Apple Ave, San Francisco CA";
+    private string storePhone = "+1 (555) 451-9021";
+
+    private double taxRate = 8.0;
+    private string promoCode = "CSGOLD";
+
+    private int glassBlur = 28;
+
+    protected override void OnInitialized()
+    {
+        DataService.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JS.InvokeVoidAsync("initializeLucide");
+    }
+
+    private void SetTab(string tab)
+    {
+        selectedTab = tab;
+    }
+
+    private void SaveChanges()
+    {
+        DataService.AddNotification("Settings Saved", "Global system settings updated successfully.", "success");
+    }
+
+    private void SaveAppearance()
+    {
+        DataService.AddNotification("Appearance Updated", $"Applied design changes: glass backdrop blur is {glassBlur}px", "info");
+    }
+
+    public void Dispose()
+    {
+        DataService.OnChange -= StateHasChanged;
+    }
+}

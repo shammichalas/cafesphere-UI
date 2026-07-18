@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CafeSphere — Enterprise Cafe Management</title>
+    <base href="/" />
+    
+    <!-- Premium Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@200;300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Custom StyleSheets -->
+    <link rel="stylesheet" href="css/variables.css" />
+    <link rel="stylesheet" href="css/app.css" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <link href="UI.styles.css" rel="stylesheet" />
+</head>
+
+<body>
+    <!-- App Root with Premium Preloader -->
+    <div id="app">
+        <style>
+            body {
+                background: #F6F6F4;
+                margin: 0;
+                padding: 0;
+                font-family: 'Manrope', sans-serif;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                overflow: hidden;
+            }
+            .preload-container {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                position: relative;
+                z-index: 10;
+            }
+            .logo-glow {
+                font-size: 32px;
+                font-weight: 800;
+                letter-spacing: -1.5px;
+                color: #173D33;
+                margin-bottom: 24px;
+                font-family: 'Plus Jakarta Sans', sans-serif;
+                position: relative;
+                animation: logo-pulse 2s ease-in-out infinite;
+            }
+            .logo-glow span {
+                color: #D4A85A;
+            }
+            .loader-bar {
+                width: 180px;
+                height: 4px;
+                background: rgba(23, 61, 51, 0.08);
+                border-radius: 99px;
+                position: relative;
+                overflow: hidden;
+            }
+            .loader-progress {
+                width: 40%;
+                height: 100%;
+                background: linear-gradient(90deg, #173D33, #D4A85A);
+                border-radius: 99px;
+                position: absolute;
+                left: -40%;
+                animation: loader-slide 1.5s cubic-bezier(0.22, 0.61, 0.36, 1) infinite;
+            }
+            .blur-bg {
+                position: absolute;
+                width: 45vw;
+                height: 45vw;
+                border-radius: 50%;
+                background: radial-gradient(circle, rgba(212, 168, 90, 0.15) 0%, rgba(23, 61, 51, 0.08) 50%, rgba(246, 246, 244, 0) 100%);
+                filter: blur(80px);
+                z-index: 1;
+                pointer-events: none;
+            }
+            @keyframes logo-pulse {
+                0%, 100% { opacity: 0.9; transform: scale(0.98); }
+                50% { opacity: 1; transform: scale(1.02); }
+            }
+            @keyframes loader-slide {
+                0% { left: -40%; }
+                100% { left: 100%; }
+            }
+        </style>
+        <div class="blur-bg"></div>
+        <div class="preload-container">
+            <div class="logo-glow">Cafe<span>Sphere</span></div>
+            <div class="loader-bar">
+                <div class="loader-progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="blazor-error-ui">
+        An unhandled error has occurred.
+        <a href="." class="reload">Reload</a>
+        <span class="dismiss">🗙</span>
+    </div>
+
+    <!-- Lucide Outline Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="_framework/blazor.webassembly.js"></script>
+    
+    <!-- Lucide JS Interop -->
+    <script>
+        window.initializeLucide = () => {
+            if (window.lucide) {
+                window.lucide.createIcons();
+            }
+            return true;
+        };
+
+        window.scrollToBottom = (elementId) => {
+            const el = document.getElementById(elementId);
+            if (el) {
+                el.scrollTop = el.scrollHeight;
+            }
+        };
+
+        // Keyboard Shortcut Listener for AI Command Center (Raycast Center Cmd+K / Ctrl+K)
+        window.registerKeyboardShortcuts = (dotnetHelper) => {
+            document.addEventListener('keydown', (e) => {
+                if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+                    e.preventDefault();
+                    dotnetHelper.invokeMethodAsync('ToggleAiAssistant');
+                }
+            });
+        };
+    </script>
+</body>
+
+</html>

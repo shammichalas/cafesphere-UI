@@ -1,0 +1,207 @@
+@inject MockDataService DataService
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+@implements IDisposable
+
+@if (IsVisible)
+{
+    <div class="ai-overlay" @onclick="HandleClose">
+        <div class="ai-modal glass-card animate-blur-in" @onclick:stopPropagation>
+            <!-- Top Input Box -->
+            <div class="ai-input-bar">
+                <i data-lucide="sparkles" class="ai-input-spark"></i>
+                <input @ref="inputElement" 
+                       @bind="queryText" 
+                       @bind:event="oninput" 
+                       @onkeydown="HandleKeyDown"
+                       type="text" 
+                       placeholder="Ask CafeSphere AI, search pages, or type '/kitchen'..."
+                       class="ai-input-field" />
+                <kbd class="esc-badge">ESC</kbd>
+            </div>
+
+            <!-- Modal Content (Chat and Commands) -->
+            <div class="ai-body" id="ai-chat-body">
+                @if (chatHistory.Any())
+                {
+                    <div class="chat-thread">
+                        @foreach (var msg in chatHistory)
+                        {
+                            <div class="chat-message @(msg.IsUser ? "user" : "ai")">
+                                <div class="msg-avatar">
+                                    <i data-lucide="@(msg.IsUser ? "user" : "sparkles")"></i>
+                                </div>
+                                <div class="msg-content">
+                                    <span class="msg-sender font-semibold">@(msg.IsUser ? "You" : "CafeSphere AI")</span>
+                                    <p class="msg-text">@((MarkupString)msg.Text)</p>
+                                    @if (!string.IsNullOrEmpty(msg.Suggestion))
+                                    {
+                                        <div class="msg-suggestion" @onclick="() => RunSuggestion(msg.Suggestion)">
+                                            <i data-lucide="corner-down-right"></i>
+                                            <span>@msg.Suggestion</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <!-- Suggestions Panel -->
+                    <div class="ai-suggestions-panel">
+                        <span class="small-label section-title">Quick Commands</span>
+                        <div class="suggestions-list">
+                            <div class="suggestion-item" @onclick='() => RunCommand("/pos")'>
+                                <i data-lucide="shopping-cart"></i>
+                                <span class="sugg-lbl">Point of Sale Page</span>
+                                <span class="sugg-cmd">/pos</span>
+                            </div>
+                            <div class="suggestion-item" @onclick='() => RunCommand("/kitchen")'>
+                                <i data-lucide="chef-hat"></i>
+                                <span class="sugg-lbl">Kitchen KDS Board</span>
+                                <span class="sugg-cmd">/kitchen</span>
+                            </div>
+                            <div class="suggestion-item" @onclick='() => RunCommand("/inventory")'>
+                                <i data-lucide="boxes"></i>
+                                <span class="sugg-lbl">Check Raw Stock</span>
+                                <span class="sugg-cmd">/inventory</span>
+                            </div>
+                        </div>
+
+                        <span class="small-label section-title">Try Asking</span>
+                        <div class="questions-list">
+                            <button class="question-btn" @onclick='() => RunCommand("whats our revenue today?")'>
+                                "What's our revenue today?"
+                            </button>
+                            <button class="question-btn" @onclick='() => RunCommand("do we have low stock?")'>
+                                "Do we have low stock?"
+                            </button>
+                            <button class="question-btn" @onclick='() => RunCommand("book a table for 4 guests at 7pm")'>
+                                "Book a table for 4 guests at 7pm"
+                            </button>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <!-- Footer status bar -->
+            <div class="ai-footer">
+                <div class="footer-tip">
+                    <span class="font-semibold">Enter</span> to execute • <span class="font-semibold">⌘K</span> to close
+                </div>
+                <div class="ai-status">
+                    <div class="status-indicator"></div>
+                    <span>AI Engine Online</span>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public bool IsVisible { get; set; }
+
+    [Parameter]
+    public EventCallback OnClose { get; set; }
+
+    private string queryText = string.Empty;
+    private ElementReference inputElement;
+
+    private List<ChatMessage> chatHistory = new();
+
+    public class ChatMessage
+    {
+        public string Text { get; set; } = string.Empty;
+        public string Suggestion { get; set; } = string.Empty;
+        public bool IsUser { get; set; }
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (IsVisible)
+        {
+            // Focus on input field when visible
+            await Task.Delay(100);
+            try
+            {
+                await inputElement.FocusAsync();
+            }
+            catch { }
+            await JS.InvokeVoidAsync("initializeLucide");
+        }
+    }
+
+    private async Task HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape")
+        {
+            await HandleClose();
+        }
+        else if (e.Key == "Enter")
+        {
+            await ProcessQuery();
+        }
+    }
+
+    private async Task ProcessQuery()
+    {
+        if (string.IsNullOrWhiteSpace(queryText)) return;
+
+        var userQuery = queryText;
+        queryText = string.Empty;
+
+        chatHistory.Add(new ChatMessage { Text = userQuery, IsUser = true });
+        await Task.Delay(50); // Small UI frame wait
+        await JS.InvokeVoidAsync("scrollToBottom", "ai-chat-body");
+        await JS.InvokeVoidAsync("initializeLucide");
+
+        // Simulate thinking delay
+        await Task.Delay(300);
+
+        var aiResponse = DataService.ExecuteAiCommand(userQuery);
+
+        chatHistory.Add(new ChatMessage 
+        { 
+            Text = aiResponse.Answer, 
+            Suggestion = aiResponse.Suggestion,
+            IsUser = false 
+        });
+
+        await Task.Delay(50);
+        await JS.InvokeVoidAsync("scrollToBottom", "ai-chat-body");
+        await JS.InvokeVoidAsync("initializeLucide");
+
+        if (aiResponse.ActionTriggered && !string.IsNullOrEmpty(aiResponse.TargetRoute))
+        {
+            await Task.Delay(800); // Wait for user to read redirect message
+            Navigation.NavigateTo(aiResponse.TargetRoute);
+            await HandleClose();
+        }
+    }
+
+    private async Task RunCommand(string command)
+    {
+        queryText = command;
+        await ProcessQuery();
+    }
+
+    private async Task RunSuggestion(string suggestion)
+    {
+        // Parse a standard question from suggestion text
+        var question = suggestion.Replace("Try asking: ", "").Replace("'", "").Trim();
+        queryText = question;
+        await ProcessQuery();
+    }
+
+    private async Task HandleClose()
+    {
+        await OnClose.InvokeAsync();
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+}

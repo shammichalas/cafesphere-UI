@@ -1,0 +1,452 @@
+@page "/orders"
+@inject MockDataService DataService
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Orders Queue — CafeSphere</PageTitle>
+
+<div class="orders-layout animate-slide-up">
+    <!-- Top Filter Controls -->
+    <div class="orders-header glass-card">
+        <div class="search-bar-wrap">
+            <i data-lucide="search" class="search-icon"></i>
+            <input @bind="searchQuery" @bind:event="oninput" type="text" placeholder="Search orders by customer or ID..." class="orders-search-input" />
+        </div>
+        
+        <div class="filter-toggles">
+            @foreach (var status in statusOptions)
+            {
+                <button class="filter-tab @(selectedStatus == status ? "active" : "")" @onclick="() => SetStatusFilter(status)">
+                    @status
+                </button>
+            }
+        </div>
+    </div>
+
+    <!-- Table Grid container -->
+    <div class="table-container-glass">
+        <table class="table-glass">
+            <thead>
+                <tr>
+                    <th @onclick='() => ToggleSort("Id")' style="cursor:pointer;">
+                        Order ID <i data-lucide="@GetSortIcon("Id")" class="sort-icon-inline"></i>
+                    </th>
+                    <th @onclick='() => ToggleSort("Time")' style="cursor:pointer;">
+                        Timestamp <i data-lucide="@GetSortIcon("Time")" class="sort-icon-inline"></i>
+                    </th>
+                    <th>Customer</th>
+                    <th>Items</th>
+                    <th @onclick='() => ToggleSort("Total")' style="cursor:pointer;">
+                        Total Value <i data-lucide="@GetSortIcon("Total")" class="sort-icon-inline"></i>
+                    </th>
+                    <th>Payment</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (!FilteredOrders.Any())
+                {
+                    <tr>
+                        <td colspan="8" class="text-center" style="padding: var(--space-xl) 0;">
+                            <div class="empty-state">
+                                <i data-lucide="list-x" class="empty-icon"></i>
+                                <p>No transaction history matched your query.</p>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var order in FilteredOrders)
+                    {
+                        <tr class="hover-row @(expandedOrder == order.Id ? "expanded-row-bg" : "")" @onclick="() => ToggleRowExpand(order.Id)" style="cursor: pointer;">
+                            <td class="font-semibold text-primary">@order.Id</td>
+                            <td>@order.CreatedAt.ToString("MMM dd, hh:mm tt")</td>
+                            <td class="font-semibold">@order.CustomerName</td>
+                            <td>@order.Items.Sum(i => i.Quantity) items</td>
+                            <td class="font-semibold text-primary">$@order.Total.ToString("F2")</td>
+                            <td>
+                                <span class="badge-pill badge-info">@order.PaymentMethod</span>
+                            </td>
+                            <td>
+                                <span class="badge-pill @GetStatusBadgeClass(order.Status)">@order.Status</span>
+                            </td>
+                            <td>
+                                <button class="btn-pill btn-glass btn-icon" @onclick:stopPropagation @onclick="() => ToggleRowExpand(order.Id)">
+                                    <i data-lucide="@(expandedOrder == order.Id ? "chevron-up" : "chevron-down")"></i>
+                                </button>
+                            </td>
+                        </tr>
+
+                        <!-- Row Expansion: Order items detail -->
+                        @if (expandedOrder == order.Id)
+                        {
+                            <tr class="expanded-detail-row" @onclick:stopPropagation>
+                                <td colspan="8">
+                                    <div class="order-expansion animate-fade-in">
+                                        <div class="expansion-grid">
+                                            <div class="order-details-pane">
+                                                <span class="small-label font-semibold">Ordered Items</span>
+                                                <div class="exp-items-list">
+                                                    @foreach (var item in order.Items)
+                                                    {
+                                                        <div class="exp-item">
+                                                            <span class="qty font-semibold">@item.Quantity x</span>
+                                                            <span class="name">@item.Item.Name</span>
+                                                            <span class="price">$@((item.Item.Price * item.Quantity).ToString("F2"))</span>
+                                                            @if (!string.IsNullOrEmpty(item.Notes))
+                                                            {
+                                                                <span class="notes"><i data-lucide="info"></i> <i>@item.Notes</i></span>
+                                                            }
+                                                        </div>
+                                                    }
+                                                </div>
+                                            </div>
+
+                                            <div class="order-receipt-pane">
+                                                <span class="small-label font-semibold">Financial Receipt</span>
+                                                <div class="receipt-box">
+                                                    <div class="r-row"><span>Subtotal</span><span>$@order.Subtotal.ToString("F2")</span></div>
+                                                    <div class="r-row"><span>Sales Tax (8.0%)</span><span>$@order.Tax.ToString("F2")</span></div>
+                                                    @if (order.Discount > 0)
+                                                    {
+                                                        <div class="r-row discount"><span>Discount</span><span>-$@order.Discount.ToString("F2")</span></div>
+                                                    }
+                                                    <div class="r-row total font-semibold"><span>Total Paid</span><span>$@order.Total.ToString("F2")</span></div>
+                                                </div>
+                                                
+                                                <div class="order-actions-wrap">
+                                                    @if (order.Status != OrderStatus.Completed && order.Status != OrderStatus.Cancelled)
+                                                    {
+                                                        <button class="btn-pill btn-danger" @onclick="() => CancelOrder(order)">
+                                                            Cancel & Refund Order
+                                                        </button>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span class="caption">Transaction settled.</span>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    }
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    /* Orders Queue Scoped CSS styling */
+    .orders-layout {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .orders-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: var(--space-md);
+        padding: var(--space-sm) var(--space-md);
+    }
+
+    .search-bar-wrap {
+        position: relative;
+        flex: 1;
+        max-width: 420px;
+    }
+
+    .search-bar-wrap .search-icon {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--color-text-muted);
+    }
+
+    .orders-search-input {
+        width: 100%;
+        height: 44px;
+        padding-left: 48px;
+        padding-right: var(--space-md);
+        background: white;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-pill);
+        font-family: var(--font-secondary);
+        font-size: 13px;
+        outline: none;
+        box-shadow: var(--shadow-soft);
+        transition: border var(--transition-fast);
+    }
+
+    .orders-search-input:focus {
+        border-color: var(--color-primary);
+    }
+
+    .filter-toggles {
+        display: flex;
+        gap: 6px;
+    }
+
+    .filter-tab {
+        background: none;
+        border: 1px solid transparent;
+        padding: 8px 18px;
+        border-radius: var(--radius-pill);
+        font-family: var(--font-secondary);
+        font-size: 13px;
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+    }
+
+    .filter-tab.active {
+        background: white;
+        border-color: var(--color-border);
+        color: var(--color-primary);
+        box-shadow: var(--shadow-soft);
+    }
+
+    .sort-icon-inline {
+        width: 12px;
+        height: 12px;
+        vertical-align: middle;
+        margin-left: 4px;
+        opacity: 0.7;
+    }
+
+    .expanded-row-bg td {
+        background: rgba(23, 61, 51, 0.02) !important;
+    }
+
+    /* Expansion Detail View styling */
+    .expanded-detail-row td {
+        padding: 0 !important;
+        border-bottom: 1px solid var(--color-border) !important;
+    }
+
+    .order-expansion {
+        padding: var(--space-md);
+        background: rgba(23, 61, 51, 0.01);
+        border-bottom-left-radius: 20px;
+        border-bottom-right-radius: 20px;
+    }
+
+    .expansion-grid {
+        display: grid;
+        grid-template-columns: 1.5fr 1fr;
+        gap: var(--space-md);
+    }
+
+    .order-details-pane, .order-receipt-pane {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+
+    .exp-items-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .exp-item {
+        background: white;
+        border: 1px solid var(--color-border-light);
+        border-radius: 12px;
+        padding: 10px 14px;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        font-size: 13px;
+        gap: 8px;
+    }
+
+    .exp-item .qty { color: var(--color-primary); }
+    .exp-item .name { flex: 1; }
+    .exp-item .price { color: var(--color-text-secondary); }
+    .exp-item .notes {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 11px;
+        color: var(--color-danger);
+        padding-left: var(--space-sm);
+    }
+
+    .exp-item .notes i { width: 10px; height: 10px; }
+
+    .receipt-box {
+        background: white;
+        border: 1px solid var(--color-border-light);
+        border-radius: 14px;
+        padding: var(--space-sm);
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .r-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+        color: var(--color-text-secondary);
+    }
+
+    .r-row.discount { color: var(--color-danger); }
+    .r-row.total {
+        font-size: 14px;
+        color: var(--color-primary);
+        border-top: 1px solid var(--color-border-light);
+        padding-top: 6px;
+    }
+
+    .order-actions-wrap {
+        display: flex;
+        margin-top: 4px;
+    }
+
+    .order-actions-wrap button {
+        width: 100%;
+    }
+
+    @@media (max-width: 900px) {
+        .orders-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .search-bar-wrap {
+            max-width: 100%;
+            width: 100%;
+        }
+        .expansion-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+@code {
+    private string searchQuery = string.Empty;
+    private string selectedStatus = "All";
+    private List<string> statusOptions = new() { "All", "Pending", "Preparing", "Ready", "Completed", "Cancelled" };
+
+    private string sortBy = "Time";
+    private bool sortDescending = true;
+    private string expandedOrder = string.Empty;
+
+    private IEnumerable<Order> FilteredOrders
+    {
+        get
+        {
+            var query = DataService.Orders.AsEnumerable();
+
+            // Status filter
+            if (selectedStatus != "All")
+            {
+                if (Enum.TryParse<OrderStatus>(selectedStatus, out var status))
+                {
+                    query = query.Where(o => o.Status == status);
+                }
+            }
+
+            // Search filter
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                query = query.Where(o => o.Id.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                                         o.CustomerName.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+            }
+
+            // Sort
+            if (sortBy == "Id")
+            {
+                query = sortDescending ? query.OrderByDescending(o => o.Id) : query.OrderBy(o => o.Id);
+            }
+            else if (sortBy == "Total")
+            {
+                query = sortDescending ? query.OrderByDescending(o => o.Total) : query.OrderBy(o => o.Total);
+            }
+            else // Time
+            {
+                query = sortDescending ? query.OrderByDescending(o => o.CreatedAt) : query.OrderBy(o => o.CreatedAt);
+            }
+
+            return query;
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        DataService.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JS.InvokeVoidAsync("initializeLucide");
+    }
+
+    private void SetStatusFilter(string status)
+    {
+        selectedStatus = status;
+        expandedOrder = string.Empty;
+    }
+
+    private void ToggleSort(string criteria)
+    {
+        if (sortBy == criteria)
+        {
+            sortDescending = !sortDescending;
+        }
+        else
+        {
+            sortBy = criteria;
+            sortDescending = true;
+        }
+    }
+
+    private string GetSortIcon(string criteria)
+    {
+        if (sortBy != criteria) return "chevrons-up-down";
+        return sortDescending ? "arrow-down-narrow-wide" : "arrow-up-wide-narrow";
+    }
+
+    private void ToggleRowExpand(string orderId)
+    {
+        if (expandedOrder == orderId)
+        {
+            expandedOrder = string.Empty;
+        }
+        else
+        {
+            expandedOrder = orderId;
+        }
+    }
+
+    private void CancelOrder(Order order)
+    {
+        DataService.UpdateOrderStatus(order.Id, OrderStatus.Cancelled);
+        DataService.AddNotification("Order Refunded", $"Order {order.Id} was refunded successfully.", "info");
+    }
+
+    private string GetStatusBadgeClass(OrderStatus status) => status switch
+    {
+        OrderStatus.Pending => "badge-info",
+        OrderStatus.Preparing => "badge-warning",
+        OrderStatus.Ready => "badge-success",
+        OrderStatus.Completed => "badge-success",
+        OrderStatus.Cancelled => "badge-danger",
+        _ => "badge-info"
+    };
+
+    public void Dispose()
+    {
+        DataService.OnChange -= StateHasChanged;
+    }
+}

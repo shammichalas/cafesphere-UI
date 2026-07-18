@@ -1,0 +1,63 @@
+:root {
+    /* Brand Color Tokens */
+    --color-bg: #F6F6F4;
+    --color-surface: #FFFFFF;
+    --color-primary: #173D33;
+    --color-secondary: #D4A85A;
+    --color-success: #35C759;
+    --color-danger: #FF453A;
+    --color-warning: #FF9F0A;
+    
+    /* Layout Borders & Alpha States */
+    --color-border: rgba(0, 0, 0, 0.08);
+    --color-border-light: rgba(0, 0, 0, 0.04);
+    --color-glass: rgba(255, 255, 255, 0.55);
+    --color-glass-border: rgba(255, 255, 255, 0.45);
+    
+    /* Text Color Tokens */
+    --color-text: #1B1B1B;
+    --color-text-secondary: #707070;
+    --color-text-muted: #A0A0A0;
+    --color-text-light: #FFFFFF;
+    
+    /* Typography System */
+    --font-primary: 'Manrope', 'Inter', -apple-system, sans-serif;
+    --font-secondary: 'Inter', -apple-system, sans-serif;
+    --font-display: 'Plus Jakarta Sans', sans-serif;
+    
+    /* Border Radius System */
+    --radius-card: 28px;
+    --radius-button: 999px;
+    --radius-input: 18px;
+    --radius-table: 24px;
+    --radius-dialog: 32px;
+    --radius-pill: 999px;
+    --radius-badge: 8px;
+    
+    /* Elevation & Depth Shadows */
+    --shadow-premium: 0 20px 80px rgba(0, 0, 0, 0.08);
+    --shadow-soft: 0 8px 30px rgba(0, 0, 0, 0.03);
+    --shadow-card: 0 10px 40px rgba(0, 0, 0, 0.05);
+    --shadow-button: 0 4px 12px rgba(23, 61, 51, 0.08);
+    --shadow-inset: inset 0 2px 4px rgba(0, 0, 0, 0.02);
+    
+    /* Spacing Grid (8pt Grid System) */
+    --space-2xs: 4px;
+    --space-xs: 8px;
+    --space-sm: 16px;
+    --space-md: 24px;
+    --space-lg: 32px;
+    --space-xl: 48px;
+    --space-2xl: 72px;
+    --space-3xl: 96px;
+    
+    /* Animation Tokens */
+    --transition-fast: 150ms cubic-bezier(.22,.61,.36,1);
+    --transition-medium: 250ms cubic-bezier(.22,.61,.36,1);
+    --transition-slow: 400ms cubic-bezier(.22,.61,.36,1);
+    --transition-leisurely: 600ms cubic-bezier(.22,.61,.36,1);
+    
+    /* Blur Intensities */
+    --blur-glass: blur(28px);
+    --blur-light: blur(10px);
+}

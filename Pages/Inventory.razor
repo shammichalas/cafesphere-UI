@@ -1,0 +1,258 @@
+@page "/inventory"
+@inject MockDataService DataService
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Inventory — CafeSphere</PageTitle>
+
+<div class="inventory-layout animate-slide-up">
+    <!-- Top Action bar with statistics summary -->
+    <div class="inventory-header glass-card">
+        <div class="search-bar-wrap">
+            <i data-lucide="search" class="search-icon"></i>
+            <input @bind="searchQuery" @bind:event="oninput" type="text" placeholder="Search raw materials, SKU..." class="inv-search-input" />
+        </div>
+        
+        <div class="inv-summary">
+            <div class="sum-box">
+                <span class="v text-primary">@DataService.Inventory.Count</span>
+                <span class="l">Total SKU</span>
+            </div>
+            <div class="sum-divider"></div>
+            <div class="sum-box">
+                <span class="v text-danger">@criticalItemsCount</span>
+                <span class="l">Restocks Needed</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Inventory table -->
+    <div class="table-container-glass">
+        <table class="table-glass">
+            <thead>
+                <tr>
+                    <th>SKU Code</th>
+                    <th>Ingredient Name</th>
+                    <th>Category</th>
+                    <th>Current Level</th>
+                    <th>Min Safety Limit</th>
+                    <th>Unit Cost</th>
+                    <th>Stock Health</th>
+                    <th>Quick Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in FilteredInventory)
+                {
+                    <tr class="hover-row">
+                        <td class="font-semibold">@item.SKU</td>
+                        <td class="font-semibold text-primary">@item.Name</td>
+                        <td>@item.Category</td>
+                        <td class="font-semibold">@item.StockLevel @item.Unit</td>
+                        <td>@item.ReorderPoint @item.Unit</td>
+                        <td>$@item.CostPrice.ToString("F2")</td>
+                        <td>
+                            @if (item.StockLevel <= item.ReorderPoint / 2)
+                            {
+                                <span class="badge-pill badge-danger">Critical Reorder</span>
+                            }
+                            else if (item.StockLevel <= item.ReorderPoint)
+                            {
+                                <span class="badge-pill badge-warning">Low Stock</span>
+                            }
+                            else
+                            {
+                                <span class="badge-pill badge-success">Sufficient</span>
+                            }
+                        </td>
+                        <td>
+                            @if (restockTargetId == item.Id)
+                            {
+                                <div class="restock-input-wrap" @onclick:stopPropagation>
+                                    <input type="number" @bind="restockQty" class="restock-qty-input" min="1" />
+                                    <button class="btn-pill btn-primary btn-sm" @onclick="() => ConfirmRestock(item.Id)"><i data-lucide="check"></i></button>
+                                    <button class="btn-pill btn-glass btn-sm" @onclick="CancelRestock"><i data-lucide="x"></i></button>
+                                </div>
+                            }
+                            else
+                            {
+                                <button class="btn-pill btn-glass" @onclick="() => StartRestock(item.Id)">
+                                    <i data-lucide="plus"></i>
+                                    <span>Restock</span>
+                                </button>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    /* Inventory Scoped CSS styling */
+    .inventory-layout {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .inventory-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--space-sm) var(--space-md);
+        gap: var(--space-md);
+    }
+
+    .search-bar-wrap {
+        position: relative;
+        flex: 1;
+        max-width: 400px;
+    }
+
+    .search-bar-wrap .search-icon {
+        position: absolute;
+        left: 16px;
+        top: 50%;
+        transform: translateY(-50%);
+        color: var(--color-text-muted);
+    }
+
+    .inv-search-input {
+        width: 100%;
+        height: 44px;
+        padding-left: 48px;
+        padding-right: var(--space-md);
+        background: white;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-pill);
+        font-family: var(--font-secondary);
+        font-size: 13px;
+        outline: none;
+        box-shadow: var(--shadow-soft);
+        transition: border var(--transition-fast);
+    }
+
+    .inv-search-input:focus {
+        border-color: var(--color-primary);
+    }
+
+    .inv-summary {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+    }
+
+    .sum-box {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+
+    .sum-box .v {
+        font-family: var(--font-display);
+        font-size: 20px;
+        font-weight: 800;
+    }
+
+    .sum-box .l {
+        font-size: 10px;
+        color: var(--color-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .sum-divider {
+        width: 1px;
+        height: 24px;
+        background: var(--color-border);
+    }
+
+    /* Restock input mini styling */
+    .restock-input-wrap {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .restock-qty-input {
+        width: 60px;
+        height: 28px;
+        border: 1px solid var(--color-border);
+        border-radius: 8px;
+        text-align: center;
+        outline: none;
+        font-family: var(--font-secondary);
+        font-size: 12px;
+    }
+
+    .btn-sm {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border-radius: 50%;
+        box-shadow: none;
+    }
+
+    @@media (max-width: 768px) {
+        .inventory-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+        .search-bar-wrap {
+            max-width: 100%;
+            width: 100%;
+        }
+    }
+</style>
+
+@code {
+    private string searchQuery = string.Empty;
+
+    // Restock control
+    private string restockTargetId = string.Empty;
+    private int restockQty = 10;
+
+    private int criticalItemsCount => DataService.Inventory
+        .Count(i => i.StockLevel <= i.ReorderPoint);
+
+    private IEnumerable<InventoryItem> FilteredInventory => DataService.Inventory
+        .Where(i => string.IsNullOrWhiteSpace(searchQuery) || 
+                    i.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) || 
+                    i.SKU.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
+                    i.Category.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+
+    protected override void OnInitialized()
+    {
+        DataService.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JS.InvokeVoidAsync("initializeLucide");
+    }
+
+    private void StartRestock(string itemId)
+    {
+        restockTargetId = itemId;
+        restockQty = 10;
+    }
+
+    private void CancelRestock()
+    {
+        restockTargetId = string.Empty;
+    }
+
+    private void ConfirmRestock(string itemId)
+    {
+        if (restockQty <= 0) return;
+        DataService.RestockInventoryItem(itemId, restockQty);
+        CancelRestock();
+    }
+
+    public void Dispose()
+    {
+        DataService.OnChange -= StateHasChanged;
+    }
+}

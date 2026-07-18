@@ -1,0 +1,321 @@
+@page "/customers"
+@inject MockDataService DataService
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Loyalty Portal — CafeSphere</PageTitle>
+
+<div class="customers-layout animate-slide-up">
+    <!-- Header summary panel -->
+    <div class="customers-header glass-card">
+        <div class="header-titles">
+            <span class="small-label font-semibold text-secondary">Loyalty Directory</span>
+            <h2>Customer Relations Management</h2>
+        </div>
+        <div class="cust-stats">
+            <div class="cs-box">
+                <span class="v text-primary">@GoldTierCount</span>
+                <span class="l">VIP Gold Members</span>
+            </div>
+            <div class="cs-divider"></div>
+            <div class="cs-box">
+                <span class="v text-secondary">850</span>
+                <span class="l">Total Registered Members</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Customer cards list -->
+    <div class="customers-grid">
+        <!-- Customer 1 -->
+        <div class="customer-card glass-card hover-lift">
+            <div class="card-identity">
+                <div class="avatar-letter gold">M</div>
+                <div class="meta">
+                    <span class="c-name font-semibold text-primary">Marc Andreessen</span>
+                    <span class="c-email">marc@a16z.com</span>
+                </div>
+                <span class="badge-pill badge-warning VIP">VIP Gold</span>
+            </div>
+            
+            <div class="card-progress">
+                <div class="prog-label">
+                    <span>Loyalty Progress</span>
+                    <span class="font-semibold">480 / 500 Points</span>
+                </div>
+                <div class="prog-bar-track">
+                    <div class="prog-bar-fill gold" style="width: 96%"></div>
+                </div>
+            </div>
+
+            <div class="card-summary">
+                <div class="stat">
+                    <span class="lbl">Last Order</span>
+                    <span class="val font-semibold">$12.96 (Signature Espresso)</span>
+                </div>
+                <div class="stat">
+                    <span class="lbl">Total Visits</span>
+                    <span class="val font-semibold">142 visits</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer 2 -->
+        <div class="customer-card glass-card hover-lift">
+            <div class="card-identity">
+                <div class="avatar-letter platinum">J</div>
+                <div class="meta">
+                    <span class="c-name font-semibold text-primary">Jack Dorsey</span>
+                    <span class="c-email">jack@block.xyz</span>
+                </div>
+                <span class="badge-pill badge-info VIP">Platinum</span>
+            </div>
+            
+            <div class="card-progress">
+                <div class="prog-label">
+                    <span>Loyalty Progress</span>
+                    <span class="font-semibold">820 / 1000 Points</span>
+                </div>
+                <div class="prog-bar-track">
+                    <div class="prog-bar-fill platinum" style="width: 82%"></div>
+                </div>
+            </div>
+
+            <div class="card-summary">
+                <div class="stat">
+                    <span class="lbl">Last Order</span>
+                    <span class="val font-semibold">$14.85 (Cafe Latte)</span>
+                </div>
+                <div class="stat">
+                    <span class="lbl">Total Visits</span>
+                    <span class="val font-semibold">215 visits</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Customer 3 -->
+        <div class="customer-card glass-card hover-lift">
+            <div class="card-identity">
+                <div class="avatar-letter silver">P</div>
+                <div class="meta">
+                    <span class="c-name font-semibold text-primary">Paul Graham</span>
+                    <span class="c-email">pg@ycombinator.com</span>
+                </div>
+                <span class="badge-pill badge-success VIP">Silver</span>
+            </div>
+            
+            <div class="card-progress">
+                <div class="prog-label">
+                    <span>Loyalty Progress</span>
+                    <span class="font-semibold">240 / 300 Points</span>
+                </div>
+                <div class="prog-bar-track">
+                    <div class="prog-bar-fill silver" style="width: 80%"></div>
+                </div>
+            </div>
+
+            <div class="card-summary">
+                <div class="stat">
+                    <span class="lbl">Last Order</span>
+                    <span class="val font-semibold">$11.15 (Cold Brew)</span>
+                </div>
+                <div class="stat">
+                    <span class="lbl">Total Visits</span>
+                    <span class="val font-semibold">78 visits</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Customers Scoped CSS styling */
+    .customers-layout {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .customers-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--space-sm) var(--space-md);
+        gap: var(--space-md);
+    }
+
+    .cust-stats {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+    }
+
+    .cs-box {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+
+    .cs-box .v {
+        font-family: var(--font-display);
+        font-size: 20px;
+        font-weight: 800;
+    }
+
+    .cs-box .l {
+        font-size: 10px;
+        color: var(--color-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .cs-divider {
+        width: 1px;
+        height: 24px;
+        background: var(--color-border);
+    }
+
+    /* Cards Grid */
+    .customers-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: var(--space-md);
+    }
+
+    .customer-card {
+        padding: var(--space-md);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+    }
+
+    .card-identity {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        position: relative;
+    }
+
+    .avatar-letter {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-display);
+        font-size: 16px;
+        font-weight: 700;
+        color: white;
+    }
+
+    .avatar-letter.gold { background: linear-gradient(135deg, var(--color-secondary) 0%, #a4782b 100%); }
+    .avatar-letter.platinum { background: linear-gradient(135deg, #707070 0%, #1b1b1b 100%); }
+    .avatar-letter.silver { background: linear-gradient(135deg, #D0D0D0 0%, #909090 100%); }
+
+    .meta {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .c-name {
+        font-size: 14px;
+    }
+
+    .c-email {
+        font-size: 11px;
+        color: var(--color-text-muted);
+    }
+
+    .VIP {
+        position: absolute;
+        top: 0;
+        right: 0;
+        font-size: 10px;
+        font-weight: 700;
+    }
+
+    /* Loyalty progress */
+    .card-progress {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 4px;
+    }
+
+    .prog-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: var(--color-text-secondary);
+    }
+
+    .prog-bar-track {
+        height: 6px;
+        background: rgba(0,0,0,0.05);
+        border-radius: 99px;
+        overflow: hidden;
+    }
+
+    .prog-bar-fill {
+        height: 100%;
+        border-radius: 99px;
+    }
+
+    .prog-bar-fill.gold { background: var(--color-secondary); }
+    .prog-bar-fill.platinum { background: var(--color-primary); }
+    .prog-bar-fill.silver { background: var(--color-success); }
+
+    .card-summary {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        border-top: 1px solid var(--color-border-light);
+        padding-top: var(--space-xs);
+        margin-top: 4px;
+    }
+
+    .stat {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+    }
+
+    .stat .lbl {
+        color: var(--color-text-muted);
+    }
+
+    .stat .val {
+        color: var(--color-text-secondary);
+        max-width: 180px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    @@media (max-width: 768px) {
+        .customers-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>
+
+@code {
+    private int GoldTierCount => 1;
+
+    protected override void OnInitialized()
+    {
+        DataService.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JS.InvokeVoidAsync("initializeLucide");
+    }
+
+    public void Dispose()
+    {
+        DataService.OnChange -= StateHasChanged;
+    }
+}

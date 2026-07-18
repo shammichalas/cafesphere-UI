@@ -1,0 +1,584 @@
+@page "/reservations"
+@inject MockDataService DataService
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Reservations — CafeSphere</PageTitle>
+
+<div class="reservations-layout animate-slide-up">
+    <!-- Interactive Header with Time Slot Picker -->
+    <div class="res-header glass-card">
+        <div class="header-titles">
+            <span class="small-label font-semibold text-secondary">Table Allocation</span>
+            <h2>CafeSeating Chart</h2>
+        </div>
+        <div class="slot-picker">
+            @foreach (var slot in timeSlots)
+            {
+                <button class="slot-tab @(selectedTimeSlot == slot ? "active" : "")" @onclick="() => SetTimeSlot(slot)">
+                    @slot
+                </button>
+            }
+        </div>
+    </div>
+
+    <!-- Main Booking Workspace Grid -->
+    <div class="res-workspace">
+        <!-- Left: Interactive Table Layout Map -->
+        <div class="table-map-panel glass-card">
+            <div class="map-header">
+                <h3>Cafe Seating Layout</h3>
+                <span class="caption">Click on tables to allocate seating</span>
+            </div>
+            
+            <div class="map-legend">
+                <div class="leg-item"><span class="leg-dot av"></span><span>Available</span></div>
+                <div class="leg-item"><span class="leg-dot res"></span><span>Reserved</span></div>
+                <div class="leg-item"><span class="leg-dot seat"></span><span>Seated</span></div>
+            </div>
+
+            <div class="seating-grid">
+                @for (int tableNum = 1; tableNum <= 12; tableNum++)
+                {
+                    var tableNo = tableNum;
+                    var tableRes = GetReservationForTable(tableNo);
+                    var cap = GetTableCapacity(tableNo);
+                    var stateClass = GetTableStateClass(tableRes);
+
+                    <div class="table-node @stateClass" @onclick="() => SelectTable(tableNo, tableRes)">
+                        <div class="table-seats-top">
+                            @for (int i = 0; i < cap / 2; i++) { <span class="seat-dot"></span> }
+                        </div>
+                        <div class="table-surface">
+                            <span class="table-no">T-@tableNo</span>
+                            <span class="table-cap">@cap seats</span>
+                        </div>
+                        <div class="table-seats-bottom">
+                            @for (int i = 0; i < cap / 2; i++) { <span class="seat-dot"></span> }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Right: Reservation list and Detail Pane -->
+        <div class="reservations-list-panel glass-card">
+            @if (activeSelectedRes != null)
+            {
+                <!-- Selected Table Reservation Details -->
+                <div class="res-details animate-fade-in">
+                    <div class="glass-card-header">
+                        <h3>Table @selectedTableNo Allocation</h3>
+                        <button class="btn-pill btn-glass btn-icon" @onclick="ClearSelected"><i data-lucide="x"></i></button>
+                    </div>
+                    <div class="details-body">
+                        <div class="detail-stat">
+                            <span class="lbl">Guest Name</span>
+                            <span class="val font-semibold">@activeSelectedRes.CustomerName</span>
+                        </div>
+                        <div class="detail-stat">
+                            <span class="lbl">Time Slot</span>
+                            <span class="val font-semibold">@activeSelectedRes.TimeSlot</span>
+                        </div>
+                        <div class="detail-stat">
+                            <span class="lbl">Seating Size</span>
+                            <span class="val font-semibold">@activeSelectedRes.Covers covers</span>
+                        </div>
+                        <div class="detail-stat">
+                            <span class="lbl">Booking Status</span>
+                            <span class="val"><span class="badge-pill @GetResBadgeClass(activeSelectedRes.Status)">@activeSelectedRes.Status</span></span>
+                        </div>
+                        @if (!string.IsNullOrEmpty(activeSelectedRes.Notes))
+                        {
+                            <div class="detail-stat">
+                                <span class="lbl">Notes</span>
+                                <span class="val"><i>@activeSelectedRes.Notes</i></span>
+                            </div>
+                        }
+                    </div>
+                    <div class="details-footer">
+                        @if (activeSelectedRes.Status == ReservationStatus.Confirmed)
+                        {
+                            <button class="btn-pill btn-primary" @onclick="SeatSelected">Seat Guests</button>
+                        }
+                        else if (activeSelectedRes.Status == ReservationStatus.Seated)
+                        {
+                            <button class="btn-pill btn-success" @onclick="CompleteSelected">Complete Booking</button>
+                        }
+                        <button class="btn-pill btn-danger" @onclick="CancelSelected">Cancel Booking</button>
+                    </div>
+                </div>
+            }
+            else if (selectedTableNo > 0)
+            {
+                <!-- No Reservation on Selected Table: Booking Form -->
+                <div class="res-booking-form animate-fade-in">
+                    <div class="glass-card-header">
+                        <h3>Book Table @selectedTableNo</h3>
+                        <button class="btn-pill btn-glass btn-icon" @onclick="ClearSelected"><i data-lucide="x"></i></button>
+                    </div>
+                    <div class="form-body">
+                        <div class="input-group-glass">
+                            <input id="res-cust-name" @bind="newResName" type="text" class="input-glass" placeholder="Guest" />
+                            <label for="res-cust-name">Guest Name</label>
+                        </div>
+                        <div class="input-group-glass">
+                            <input id="res-covers" @bind="newResCovers" type="number" class="input-glass" min="1" max="@GetTableCapacity(selectedTableNo)" />
+                            <label for="res-covers">Number of Guests</label>
+                        </div>
+                        <div class="input-group-glass">
+                            <input id="res-notes" @bind="newResNotes" type="text" class="input-glass" placeholder="None" />
+                            <label for="res-notes">Special Requests / Notes</label>
+                        </div>
+                    </div>
+                    <div class="form-footer">
+                        <button class="btn-pill btn-glass" @onclick="ClearSelected">Cancel</button>
+                        <button class="btn-pill btn-primary" @onclick="SubmitReservation">Book Table</button>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <!-- Standard List View of Reservations -->
+                <div class="res-list-view">
+                    <div class="glass-card-header">
+                        <h3>Bookings Schedule</h3>
+                        <span class="badge-pill badge-info">@FilteredReservations.Count() reservations</span>
+                    </div>
+                    <div class="bookings-scroller">
+                        @if (!FilteredReservations.Any())
+                        {
+                            <div class="empty-state">
+                                <i data-lucide="calendar-x" class="empty-icon"></i>
+                                <p>No bookings found for @selectedTimeSlot.</p>
+                            </div>
+                        }
+                        else
+                        {
+                            @foreach (var res in FilteredReservations)
+                            {
+                                <div class="booking-strip @res.Status.ToString().ToLower()" @onclick="() => SelectTable(res.TableNumber, res)">
+                                    <div class="strip-header">
+                                        <span class="font-semibold text-primary">@res.CustomerName</span>
+                                        <span class="badge-pill badge-info">Table @res.TableNumber</span>
+                                    </div>
+                                    <div class="strip-footer">
+                                        <span class="caption">@res.TimeSlot • @res.Covers covers</span>
+                                        <span class="badge-pill @GetResBadgeClass(res.Status)">@res.Status</span>
+                                    </div>
+                                </div>
+                            }
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Reservations Scoped CSS styling */
+    .reservations-layout {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+        height: calc(100vh - 120px);
+    }
+
+    .res-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--space-sm) var(--space-md);
+        gap: var(--space-md);
+    }
+
+    .slot-picker {
+        display: flex;
+        gap: 6px;
+        overflow-x: auto;
+    }
+
+    .slot-tab {
+        background: rgba(0, 0, 0, 0.02);
+        border: 1px solid var(--color-border);
+        padding: 8px 16px;
+        border-radius: var(--radius-pill);
+        font-family: var(--font-secondary);
+        font-size: 12px;
+        color: var(--color-text-secondary);
+        cursor: pointer;
+        transition: all var(--transition-fast);
+        white-space: nowrap;
+    }
+
+    .slot-tab.active {
+        background: var(--color-primary);
+        color: white;
+        border-color: var(--color-primary);
+    }
+
+    .res-workspace {
+        flex: 1;
+        display: grid;
+        grid-template-columns: 2.2fr 1fr;
+        gap: var(--space-md);
+        overflow: hidden;
+    }
+
+    .table-map-panel {
+        display: flex;
+        flex-direction: column;
+        padding: var(--space-md);
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .map-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-shrink: 0;
+    }
+
+    .map-legend {
+        display: flex;
+        gap: var(--space-md);
+        margin: var(--space-sm) 0;
+        flex-shrink: 0;
+    }
+
+    .leg-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+    }
+
+    .leg-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+    }
+
+    .leg-dot.av { background: var(--color-success); }
+    .leg-dot.res { background: var(--color-secondary); }
+    .leg-dot.seat { background: var(--color-danger); }
+
+    .seating-grid {
+        flex: 1;
+        overflow-y: auto;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+        gap: var(--space-md);
+        padding: var(--space-sm) 0;
+        align-content: start;
+    }
+
+    /* Table node structure */
+    .table-node {
+        background: rgba(255,255,255,0.7);
+        border: 1px solid var(--color-border);
+        border-radius: 20px;
+        padding: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        cursor: pointer;
+        transition: transform var(--transition-fast), border-color var(--transition-fast), background var(--transition-fast);
+        user-select: none;
+    }
+
+    .table-node:hover {
+        transform: translateY(-2px);
+        border-color: var(--color-primary);
+        background: white;
+    }
+
+    .table-surface {
+        width: 80px;
+        height: 50px;
+        border-radius: 12px;
+        background: white;
+        border: 2px solid var(--color-success);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        box-shadow: var(--shadow-soft);
+        transition: border var(--transition-fast), background var(--transition-fast);
+    }
+
+    .table-node.reserved .table-surface { border-color: var(--color-secondary); background: rgba(212, 168, 90, 0.05); }
+    .table-node.seated .table-surface { border-color: var(--color-danger); background: rgba(255, 69, 58, 0.05); }
+
+    .table-no {
+        font-family: var(--font-display);
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--color-primary);
+    }
+
+    .table-cap {
+        font-size: 10px;
+        color: var(--color-text-secondary);
+    }
+
+    .table-seats-top, .table-seats-bottom {
+        display: flex;
+        gap: 8px;
+        height: 6px;
+    }
+
+    .seat-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.15);
+    }
+
+    /* Right bookings side list */
+    .reservations-list-panel {
+        padding: var(--space-md);
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .bookings-scroller {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: var(--space-sm);
+        padding-right: 4px;
+    }
+
+    .booking-strip {
+        background: rgba(0,0,0,0.015);
+        border: 1px solid var(--color-border-light);
+        border-radius: 16px;
+        padding: 12px;
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        transition: transform var(--transition-fast), background var(--transition-fast);
+    }
+
+    .booking-strip:hover {
+        transform: translateY(-1px);
+        background: white;
+        border-color: rgba(23, 61, 51, 0.12);
+    }
+
+    .strip-header, .strip-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .strip-header span {
+        font-size: 14px;
+    }
+
+    /* Detail / Booking view body */
+    .details-body, .form-body {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+        margin: var(--space-md) 0;
+        flex: 1;
+        overflow-y: auto;
+    }
+
+    .detail-stat {
+        display: flex;
+        justify-content: space-between;
+        font-size: 14px;
+        border-bottom: 1px solid var(--color-border-light);
+        padding-bottom: var(--space-xs);
+    }
+
+    .detail-stat .lbl {
+        color: var(--color-text-secondary);
+    }
+
+    .detail-stat .val {
+        color: var(--color-text);
+        text-align: right;
+    }
+
+    .details-footer, .form-footer {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+        border-top: 1px solid var(--color-border-light);
+        padding-top: var(--space-sm);
+    }
+
+    .details-footer button, .form-footer button {
+        width: 100%;
+    }
+
+    @@media (max-width: 1024px) {
+        .res-workspace {
+            grid-template-columns: 1.5fr 1fr;
+        }
+    }
+
+    @@media (max-width: 900px) {
+        .res-workspace {
+            grid-template-columns: 1fr;
+            height: auto;
+            overflow: visible;
+        }
+        .table-map-panel {
+            height: 480px;
+        }
+        .reservations-list-panel {
+            height: 380px;
+        }
+    }
+</style>
+
+@code {
+    private string selectedTimeSlot = "All";
+    private List<string> timeSlots = new() { "All", "09:00 AM", "11:30 AM", "02:00 PM", "07:30 PM" };
+
+    private int selectedTableNo = 0;
+    private Reservation? activeSelectedRes = null;
+
+    // Booking form model
+    private string newResName = string.Empty;
+    private int newResCovers = 2;
+    private string newResNotes = string.Empty;
+
+    private IEnumerable<Reservation> FilteredReservations => DataService.Reservations
+        .Where(r => (selectedTimeSlot == "All" || r.TimeSlot == selectedTimeSlot) && 
+                    r.Status != ReservationStatus.Completed && 
+                    r.Status != ReservationStatus.Cancelled);
+
+    protected override void OnInitialized()
+    {
+        DataService.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JS.InvokeVoidAsync("initializeLucide");
+    }
+
+    private void SetTimeSlot(string slot)
+    {
+        selectedTimeSlot = slot;
+        ClearSelected();
+    }
+
+    private Reservation? GetReservationForTable(int tableNo)
+    {
+        // Get active reservation for specified table in current time slot context
+        return DataService.Reservations
+            .FirstOrDefault(r => r.TableNumber == tableNo && 
+                                 r.Status != ReservationStatus.Completed && 
+                                 r.Status != ReservationStatus.Cancelled &&
+                                 (selectedTimeSlot == "All" || r.TimeSlot == selectedTimeSlot));
+    }
+
+    private int GetTableCapacity(int tableNo) => tableNo switch
+    {
+        4 => 2,
+        2 => 2,
+        5 => 2,
+        9 => 2,
+        8 => 4,
+        3 => 4,
+        7 => 4,
+        10 => 4,
+        1 => 6,
+        6 => 6,
+        11 => 6,
+        12 => 6,
+        _ => 4
+    };
+
+    private string GetTableStateClass(Reservation? res)
+    {
+        if (res == null) return "available";
+        return res.Status.ToString().ToLower();
+    }
+
+    private void SelectTable(int tableNo, Reservation? res)
+    {
+        selectedTableNo = tableNo;
+        activeSelectedRes = res;
+
+        // Reset form variables
+        newResName = string.Empty;
+        newResCovers = GetTableCapacity(tableNo);
+        newResNotes = string.Empty;
+    }
+
+    private void ClearSelected()
+    {
+        selectedTableNo = 0;
+        activeSelectedRes = null;
+    }
+
+    private void SeatSelected()
+    {
+        if (activeSelectedRes != null)
+        {
+            DataService.UpdateReservationStatus(activeSelectedRes.Id, ReservationStatus.Seated);
+            DataService.AddNotification("Table Status", $"{activeSelectedRes.CustomerName} has been seated at Table {activeSelectedRes.TableNumber}", "info");
+        }
+    }
+
+    private void CompleteSelected()
+    {
+        if (activeSelectedRes != null)
+        {
+            DataService.UpdateReservationStatus(activeSelectedRes.Id, ReservationStatus.Completed);
+            DataService.AddNotification("Table Cleared", $"Table {activeSelectedRes.TableNumber} is now vacant and clean", "success");
+            ClearSelected();
+        }
+    }
+
+    private void CancelSelected()
+    {
+        if (activeSelectedRes != null)
+        {
+            DataService.UpdateReservationStatus(activeSelectedRes.Id, ReservationStatus.Cancelled);
+            DataService.AddNotification("Booking Cancelled", $"Reservation for {activeSelectedRes.CustomerName} has been cancelled.", "warning");
+            ClearSelected();
+        }
+    }
+
+    private void SubmitReservation()
+    {
+        if (string.IsNullOrWhiteSpace(newResName)) return;
+
+        var slot = selectedTimeSlot == "All" ? "02:00 PM" : selectedTimeSlot;
+        DataService.AddReservation(newResName, slot, selectedTableNo, newResCovers, newResNotes);
+        
+        ClearSelected();
+    }
+
+    private string GetResBadgeClass(ReservationStatus status) => status switch
+    {
+        ReservationStatus.Confirmed => "badge-info",
+        ReservationStatus.Seated => "badge-danger",
+        ReservationStatus.Completed => "badge-success",
+        ReservationStatus.Cancelled => "badge-warning",
+        _ => "badge-info"
+    };
+
+    public void Dispose()
+    {
+        DataService.OnChange -= StateHasChanged;
+    }
+}

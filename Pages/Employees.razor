@@ -1,0 +1,247 @@
+@page "/employees"
+@inject MockDataService DataService
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Staff Roster — CafeSphere</PageTitle>
+
+<div class="employees-layout animate-slide-up">
+    <!-- Header with statistics summaries -->
+    <div class="employees-header glass-card">
+        <div class="header-titles">
+            <span class="small-label font-semibold text-secondary">Workforce Roster</span>
+            <h2>Staff Scheduling & Attendance</h2>
+        </div>
+        <div class="staff-stats">
+            <div class="st-box">
+                <span class="v text-primary">@onDutyCount</span>
+                <span class="l">On Duty Now</span>
+            </div>
+            <div class="st-divider"></div>
+            <div class="st-box">
+                <span class="v text-secondary">@DataService.Employees.Count</span>
+                <span class="l">Active Roster</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Employee Cards Grid -->
+    <div class="staff-grid">
+        @foreach (var emp in DataService.Employees)
+        {
+            <div class="employee-card glass-card hover-lift @(emp.IsOnDuty ? "on-duty" : "off-duty")">
+                <div class="card-top">
+                    <img src="@emp.ImageUrl" alt="@emp.Name" class="avatar-large" />
+                    <div class="emp-details">
+                        <span class="emp-name font-semibold text-primary">@emp.Name</span>
+                        <span class="emp-role small-label">@emp.Role</span>
+                    </div>
+                    <span class="status-indicator-badge @(emp.IsOnDuty ? "green" : "gray")">
+                        @(emp.IsOnDuty ? "On Duty" : "Off Duty")
+                    </span>
+                </div>
+                
+                <div class="card-mid">
+                    <div class="shift-info">
+                        <i data-lucide="clock"></i>
+                        <span>@emp.ActiveShift</span>
+                    </div>
+                    <div class="hours-info">
+                        <i data-lucide="calendar"></i>
+                        <span>@emp.HoursWorkedThisWeek hrs logged this week</span>
+                    </div>
+                </div>
+
+                <div class="card-bottom">
+                    @if (emp.IsOnDuty)
+                    {
+                        <button class="btn-pill btn-danger action-attendance-btn" @onclick="() => ToggleShift(emp.Id)">
+                            <i data-lucide="log-out"></i>
+                            <span>Clock Out Employee</span>
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn-pill btn-primary action-attendance-btn" @onclick="() => ToggleShift(emp.Id)">
+                            <i data-lucide="log-in"></i>
+                            <span>Clock In Employee</span>
+                        </button>
+                    }
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    /* Employees Scoped CSS styling */
+    .employees-layout {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .employees-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: var(--space-sm) var(--space-md);
+        gap: var(--space-md);
+    }
+
+    .staff-stats {
+        display: flex;
+        align-items: center;
+        gap: var(--space-md);
+    }
+
+    .st-box {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+    }
+
+    .st-box .v {
+        font-family: var(--font-display);
+        font-size: 20px;
+        font-weight: 800;
+    }
+
+    .st-box .l {
+        font-size: 10px;
+        color: var(--color-text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .st-divider {
+        width: 1px;
+        height: 24px;
+        background: var(--color-border);
+    }
+
+    /* Roster Cards Grid */
+    .staff-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+        gap: var(--space-md);
+    }
+
+    .employee-card {
+        padding: var(--space-md);
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-sm);
+        border: 1px solid var(--color-glass-border);
+        transition: transform var(--transition-medium), border var(--transition-medium);
+    }
+
+    .employee-card.on-duty {
+        border-color: rgba(53, 199, 89, 0.2);
+        background: radial-gradient(circle at top right, rgba(255, 255, 255, 0.8) 0%, rgba(53, 199, 89, 0.02) 100%);
+    }
+
+    .card-top {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        position: relative;
+    }
+
+    .avatar-large {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid white;
+        box-shadow: var(--shadow-soft);
+    }
+
+    .emp-details {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .emp-name {
+        font-size: 15px;
+    }
+
+    .emp-role {
+        font-size: 10px;
+        color: var(--color-text-muted);
+    }
+
+    .status-indicator-badge {
+        position: absolute;
+        top: 0;
+        right: 0;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border-radius: 6px;
+    }
+
+    .status-indicator-badge.green { background: rgba(53, 199, 89, 0.1); color: var(--color-success); }
+    .status-indicator-badge.gray { background: rgba(0, 0, 0, 0.05); color: var(--color-text-secondary); }
+
+    .card-mid {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        padding: var(--space-xs) 0;
+        border-top: 1px solid var(--color-border-light);
+        border-bottom: 1px solid var(--color-border-light);
+    }
+
+    .shift-info, .hours-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: var(--color-text-secondary);
+    }
+
+    .shift-info i, .hours-info i {
+        width: 14px;
+        height: 14px;
+        color: var(--color-text-muted);
+    }
+
+    .action-attendance-btn {
+        width: 100%;
+        font-size: 12px;
+        font-weight: 600;
+        box-shadow: none;
+    }
+
+    @@media (max-width: 768px) {
+        .employees-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+</style>
+
+@code {
+    private int onDutyCount => DataService.Employees.Count(e => e.IsOnDuty);
+
+    protected override void OnInitialized()
+    {
+        DataService.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JS.InvokeVoidAsync("initializeLucide");
+    }
+
+    private void ToggleShift(string empId)
+    {
+        DataService.ToggleEmployeeShift(empId);
+    }
+
+    public void Dispose()
+    {
+        DataService.OnChange -= StateHasChanged;
+    }
+}

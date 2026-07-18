@@ -1,0 +1,198 @@
+@page "/finance"
+@inject MockDataService DataService
+@inject IJSRuntime JS
+@implements IDisposable
+
+<PageTitle>Finances — CafeSphere</PageTitle>
+
+<div class="finance-layout animate-slide-up">
+    <!-- Financial Metrics cards -->
+    <div class="dashboard-grid-stats">
+        <div class="glass-card metric-card">
+            <div class="metric-header">
+                <span class="small-label font-semibold text-secondary">Operational Capital</span>
+                <span class="badge-pill badge-success">Active</span>
+            </div>
+            <div class="metric-body">
+                <span class="metric-value">$@netCashFlow.ToString("F2")</span>
+                <span class="metric-label">Net Profit Margin</span>
+            </div>
+        </div>
+
+        <div class="glass-card metric-card">
+            <div class="metric-header">
+                <span class="small-label font-semibold text-secondary">Total Inflow</span>
+                <span class="badge-pill badge-info">POS + Web</span>
+            </div>
+            <div class="metric-body">
+                <span class="metric-value">$@totalRevenue.ToString("F2")</span>
+                <span class="metric-label">Cumulative Gross Revenue</span>
+            </div>
+        </div>
+
+        <div class="glass-card metric-card">
+            <div class="metric-header">
+                <span class="small-label font-semibold text-secondary">Total Outflow</span>
+                <span class="badge-pill badge-danger">Bills + Supplies</span>
+            </div>
+            <div class="metric-body">
+                <span class="metric-value">$@totalExpense.ToString("F2")</span>
+                <span class="metric-label">Cumulative Expenses</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ledger layout -->
+    <div class="finance-workspace">
+        <div class="ledger-panel glass-card">
+            <div class="glass-card-header">
+                <div>
+                    <h3>Financial Ledger</h3>
+                    <span class="caption">Double-entry audit logs of all cash flows</span>
+                </div>
+                <button class="btn-pill btn-primary" @onclick="RecordExpense">
+                    <i data-lucide="plus"></i>
+                    <span>Log Expense</span>
+                </button>
+            </div>
+
+            <!-- Ledger Table -->
+            <div class="table-container-glass" style="box-shadow: none; border-radius: 16px; border: 1px solid var(--color-border);">
+                <table class="table-glass">
+                    <thead>
+                        <tr>
+                            <th>Time</th>
+                            <th>Description</th>
+                            <th>Category</th>
+                            <th>Record Type</th>
+                            <th style="text-align: right;">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var record in DataService.FinanceRecords.OrderByDescending(f => f.Timestamp))
+                        {
+                            <tr class="hover-row">
+                                <td>@record.Timestamp.ToString("MMM dd, hh:mm tt")</td>
+                                <td class="font-semibold text-primary">@record.Description</td>
+                                <td>@record.Category</td>
+                                <td>
+                                    <span class="badge-pill @(record.Type == "Revenue" ? "badge-success" : "badge-danger")">
+                                        @record.Type
+                                    </span>
+                                </td>
+                                <td style="text-align: right;" class="font-semibold @(record.Type == "Revenue" ? "text-revenue" : "text-expense")">
+                                    @(record.Type == "Revenue" ? "+" : "-")$@record.Amount.ToString("F2")
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Finance Scoped CSS styling */
+    .finance-layout {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+    }
+
+    .metric-card {
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        height: 140px;
+    }
+
+    .metric-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .metric-body {
+        margin-top: auto;
+    }
+
+    .metric-value {
+        display: block;
+        font-family: var(--font-display);
+        font-size: 28px;
+        font-weight: 800;
+        color: var(--color-primary);
+        letter-spacing: -0.5px;
+    }
+
+    .metric-label {
+        font-size: 12px;
+        color: var(--color-text-secondary);
+    }
+
+    .finance-workspace {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .ledger-panel {
+        padding: var(--space-md);
+    }
+
+    /* Ledger Table colors */
+    .text-revenue {
+        color: var(--color-success);
+    }
+
+    .text-expense {
+        color: var(--color-danger);
+    }
+</style>
+
+@code {
+    // Computed totals
+    private decimal totalRevenue => DataService.FinanceRecords
+        .Where(f => f.Type == "Revenue")
+        .Sum(f => f.Amount);
+
+    private decimal totalExpense => DataService.FinanceRecords
+        .Where(f => f.Type == "Expense")
+        .Sum(f => f.Amount);
+
+    private decimal netCashFlow => totalRevenue - totalExpense;
+
+    protected override void OnInitialized()
+    {
+        DataService.OnChange += StateHasChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JS.InvokeVoidAsync("initializeLucide");
+    }
+
+    private void RecordExpense()
+    {
+        // Simulate logging an expense
+        var amount = 45.00m;
+        var recordId = $"f{DataService.FinanceRecords.Count + 1}";
+        
+        DataService.FinanceRecords.Add(new FinanceRecord
+        {
+            Id = recordId,
+            Type = "Expense",
+            Category = "Supplies",
+            Amount = amount,
+            Timestamp = DateTime.Now,
+            Description = "Raw materials top-up (Paper cups & straws)"
+        });
+
+        DataService.AddNotification("Expense Logged", $"Recorded operational expense of ${amount:F2}", "warning");
+    }
+
+    public void Dispose()
+    {
+        DataService.OnChange -= StateHasChanged;
+    }
+}
