@@ -197,7 +197,7 @@ public class ApiService
 
     public HubConnection CreateHubConnection(string hubPath)
     {
-        var baseUri = _httpClient.BaseAddress ?? new Uri("http://localhost:5000/");
+        var baseUri = _httpClient.BaseAddress ?? new Uri("about:blank");
         var hubUrl = new Uri(baseUri, hubPath);
 
         return new HubConnectionBuilder()

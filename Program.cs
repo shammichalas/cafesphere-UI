@@ -8,7 +8,15 @@ var builder = WebAssemblyHostBuilder.CreateDefault(args);
 builder.RootComponents.Add<App>("#app");
 builder.RootComponents.Add<HeadOutlet>("head::after");
 
-var apiBaseUrl = builder.Configuration["ApiBaseUrl"] ?? "http://localhost:5000/";
+var apiBaseUrl = builder.Configuration["ApiBaseUrl"] 
+    ?? builder.Configuration["API_BASE_URL"]
+    ?? Environment.GetEnvironmentVariable("ApiBaseUrl")
+    ?? Environment.GetEnvironmentVariable("API_BASE_URL");
+
+if (string.IsNullOrWhiteSpace(apiBaseUrl))
+{
+    apiBaseUrl = builder.HostEnvironment.BaseAddress;
+}
 
 builder.Services.AddScoped(sp => new HttpClient 
 { 
