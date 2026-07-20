@@ -15,7 +15,7 @@ var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
 
 if (string.IsNullOrWhiteSpace(apiBaseUrl))
 {
-    apiBaseUrl = "http://localhost:5000/";
+    apiBaseUrl = "https://cafesphere-api.onrender.com/";
 }
 
 builder.Services.AddScoped(sp => new HttpClient 
