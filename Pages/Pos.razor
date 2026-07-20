@@ -174,17 +174,19 @@
                 <!-- Payment Method Selector -->
                 <span class="small-label input-section-title">Select Payment Mode</span>
                 <div class="payment-methods-grid">
-                    <button class="pay-method-btn @(paymentMethod == "Card" ? "active" : "")" @onclick='() => SetPayment("Card")'>
+                    <button type="button" class="pay-method-btn active">
+                        <i data-lucide="coins"></i>
+                        <span>Cash Payment</span>
+                    </button>
+                    <button type="button" class="pay-method-btn disabled opacity-50" style="cursor: not-allowed; position: relative;" title="Coming Soon">
+                        <span class="badge-pill badge-warning position-absolute" style="top: 4px; right: 4px; font-size: 9px; padding: 2px 6px;">Soon</span>
                         <i data-lucide="credit-card"></i>
                         <span>Credit/Debit</span>
                     </button>
-                    <button class="pay-method-btn @(paymentMethod == "Tap" ? "active" : "")" @onclick='() => SetPayment("Tap")'>
+                    <button type="button" class="pay-method-btn disabled opacity-50" style="cursor: not-allowed; position: relative;" title="Coming Soon">
+                        <span class="badge-pill badge-warning position-absolute" style="top: 4px; right: 4px; font-size: 9px; padding: 2px 6px;">Soon</span>
                         <i data-lucide="nfc"></i>
-                        <span>NFC Mobile Tap</span>
-                    </button>
-                    <button class="pay-method-btn @(paymentMethod == "Cash" ? "active" : "")" @onclick='() => SetPayment("Cash")'>
-                        <i data-lucide="coins"></i>
-                        <span>Cash Payment</span>
+                        <span>NFC / Mobile</span>
                     </button>
                 </div>
 
@@ -802,7 +804,7 @@
     // Checkout Modal variables
     private string customerName = string.Empty;
     private string discountCode = string.Empty;
-    private string paymentMethod = "Card";
+    private string paymentMethod = "Cash";
 
     // Totals calculations
     private decimal subtotal => cartItems.Sum(i => i.Item.Price * i.Quantity);

@@ -1,10 +1,11 @@
 @page "/settings"
 @attribute [Authorize]
 @inject MockDataService DataService
+@inject UI.Services.AuthService AuthService
 @inject IJSRuntime JS
 @implements IDisposable
 
-<PageTitle>Settings — CafeSphere</PageTitle>
+<PageTitle>Account & Settings — CafeSphere</PageTitle>
 
 <div class="settings-layout animate-slide-up">
     <!-- Settings Workspace Grid -->
@@ -13,24 +14,77 @@
         <div class="settings-nav-panel glass-card">
             <span class="small-label section-title">Settings Groups</span>
             <div class="settings-tabs">
-                <button class="settings-tab @(selectedTab == "general" ? "active" : "")" @onclick='() => SetTab("general")'>
-                    <i data-lucide="store"></i>
-                    <span>Store General</span>
+                <button class="settings-tab @(selectedTab == "profile" ? "active" : "")" @onclick='() => SetTab("profile")'>
+                    <i data-lucide="user"></i>
+                    <span>My Profile</span>
                 </button>
-                <button class="settings-tab @(selectedTab == "taxes" ? "active" : "")" @onclick='() => SetTab("taxes")'>
-                    <i data-lucide="percent"></i>
-                    <span>Taxes & Promo Codes</span>
-                </button>
+                @if (AuthService.CurrentUser != null && AuthService.CurrentUser.Role != "Customer")
+                {
+                    <button class="settings-tab @(selectedTab == "general" ? "active" : "")" @onclick='() => SetTab("general")'>
+                        <i data-lucide="store"></i>
+                        <span>Store General</span>
+                    </button>
+                    <button class="settings-tab @(selectedTab == "taxes" ? "active" : "")" @onclick='() => SetTab("taxes")'>
+                        <i data-lucide="percent"></i>
+                        <span>Taxes & Promo Codes</span>
+                    </button>
+                }
                 <button class="settings-tab @(selectedTab == "appearance" ? "active" : "")" @onclick='() => SetTab("appearance")'>
                     <i data-lucide="paint-brush"></i>
-                    <span>UI & Accent Themes</span>
+                    <span>UI & Appearance</span>
                 </button>
             </div>
         </div>
 
         <!-- Right: Active config form -->
         <div class="settings-form-panel glass-card">
-            @if (selectedTab == "general")
+            @if (selectedTab == "profile")
+            {
+                <!-- User Profile Form (Full Name, Username, Email, Phone Number) -->
+                <div class="settings-pane-form animate-fade-in">
+                    <div class="glass-card-header mb-4">
+                        <h3>Personal Account Profile</h3>
+                        <span class="caption">Manage your login details and contact information</span>
+                    </div>
+
+                    <div class="form-body-wrap">
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <div class="input-group-glass">
+                                    <input id="user-fullname" @bind="userFullName" type="text" class="input-glass" placeholder="Your Full Name" />
+                                    <label for="user-fullname">Full Name</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="input-group-glass">
+                                    <input id="user-username" @bind="userUsername" type="text" class="input-glass" placeholder="username" />
+                                    <label for="user-username">Username</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mt-1">
+                            <div class="col-6">
+                                <div class="input-group-glass">
+                                    <input id="user-email" @bind="userEmail" type="email" class="input-glass" placeholder="name@example.com" />
+                                    <label for="user-email">Email Address</label>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <div class="input-group-glass">
+                                    <input id="user-phone" @bind="userPhone" type="text" class="input-glass" placeholder="+1 (555) 000-0000" />
+                                    <label for="user-phone">Phone Number</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-footer-wrap mt-4">
+                        <button class="btn-pill btn-primary" @onclick="SaveProfile">Save Profile Details</button>
+                    </div>
+                </div>
+            }
+            else if (selectedTab == "general")
             {
                 <!-- General profile form -->
                 <div class="settings-pane-form animate-fade-in">
@@ -287,7 +341,13 @@
 </style>
 
 @code {
-    private string selectedTab = "general";
+    private string selectedTab = "profile";
+
+    // User profile states
+    private string userFullName = "";
+    private string userUsername = "";
+    private string userEmail = "";
+    private string userPhone = "";
 
     // Form states
     private string storeName = "CafeSphere Flagship Branch";
@@ -302,6 +362,13 @@
     protected override void OnInitialized()
     {
         DataService.OnChange += StateHasChanged;
+        if (AuthService.CurrentUser != null)
+        {
+            userFullName = AuthService.CurrentUser.FullName ?? "";
+            userUsername = AuthService.CurrentUser.Username ?? "";
+            userEmail = AuthService.CurrentUser.Email ?? "";
+            userPhone = "+1 (555) 349-2091";
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -312,6 +379,17 @@
     private void SetTab(string tab)
     {
         selectedTab = tab;
+    }
+
+    private void SaveProfile()
+    {
+        if (AuthService.CurrentUser != null)
+        {
+            AuthService.CurrentUser.FullName = userFullName;
+            AuthService.CurrentUser.Username = userUsername;
+            AuthService.CurrentUser.Email = userEmail;
+        }
+        DataService.AddNotification("Profile Updated", "Your personal profile details have been saved successfully.", "success");
     }
 
     private void SaveChanges()

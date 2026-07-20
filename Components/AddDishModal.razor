@@ -5,14 +5,14 @@
 {
     <div class="modal-overlay animate-fade-in" @onclick="Close">
         <div class="glass-card modal-container animate-slide-up" @onclick:stopPropagation>
-            <div class="modal-header d-flex align-items-center justify-content-between">
-                <div class="d-flex align-items-center gap-2">
-                    <div class="icon-badge bg-primary-light">
-                        <i data-lucide="chef-hat" class="text-primary"></i>
+            <div class="modal-header d-flex align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="payment-card-badge">
+                        <i data-lucide="sparkles" class="text-primary"></i>
                     </div>
                     <div>
-                        <h3 class="m-0">Add New Catalog Dish</h3>
-                        <p class="text-secondary small m-0">Publish a new culinary dish or beverage to the customer order menu</p>
+                        <h3 class="m-0 font-bold">Add New Culinary Dish</h3>
+                        <span class="caption text-muted">Publish a new dish or drink to the live customer menu</span>
                     </div>
                 </div>
                 <button type="button" class="btn-icon-close" @onclick="Close">
@@ -20,50 +20,52 @@
                 </button>
             </div>
 
-            <form @onsubmit="HandleSubmit" class="modal-body">
-                <div class="input-group-glass mb-3">
-                    <input type="text" class="input-glass" @bind="dishName" required placeholder="e.g. Salted Caramel Cold Foam Brew" />
-                    <label>Dish / Item Name</label>
+            <form @onsubmit="HandleSubmit" class="modal-body d-flex flex-column gap-3">
+                <div class="input-group-glass">
+                    <input type="text" class="input-glass" @bind="dishName" required placeholder="e.g. Honey Caramel Macchiato" />
+                    <label>Dish Name</label>
                 </div>
 
-                <div class="row g-3 mb-3">
-                    <div class="col-6">
-                        <div class="input-group-glass">
-                            <select class="input-glass" @bind="category">
-                                <option value="Coffee">Coffee & Espresso</option>
-                                <option value="Bakery">Bakery & Pastries</option>
-                                <option value="Dessert">Artisanal Desserts</option>
-                                <option value="Beverage">Cold Beverages</option>
-                                <option value="Main Course">Main Course & Specials</option>
-                            </select>
-                            <label>Category</label>
-                        </div>
+                <!-- Payment-Card Style Category Selection -->
+                <div>
+                    <span class="small-label d-block mb-2 text-muted">Select Category</span>
+                    <div class="category-cards-grid">
+                        <button type="button" class="cat-card-tile @(category == "Coffee" ? "active" : "")" @onclick='() => category = "Coffee"'>
+                            <i data-lucide="coffee"></i>
+                            <span>Coffee</span>
+                        </button>
+                        <button type="button" class="cat-card-tile @(category == "Bakery" ? "active" : "")" @onclick='() => category = "Bakery"'>
+                            <i data-lucide="croissant"></i>
+                            <span>Bakery</span>
+                        </button>
+                        <button type="button" class="cat-card-tile @(category == "Dessert" ? "active" : "")" @onclick='() => category = "Dessert"'>
+                            <i data-lucide="cake"></i>
+                            <span>Dessert</span>
+                        </button>
+                        <button type="button" class="cat-card-tile @(category == "Beverage" ? "active" : "")" @onclick='() => category = "Beverage"'>
+                            <i data-lucide="cup-soda"></i>
+                            <span>Beverage</span>
+                        </button>
                     </div>
+                </div>
+
+                <div class="row g-3">
                     <div class="col-6">
                         <div class="input-group-glass">
                             <input type="number" step="0.25" class="input-glass" @bind="price" required placeholder="4.50" />
                             <label>Price ($ USD)</label>
                         </div>
                     </div>
-                </div>
-
-                <div class="row g-3 mb-3">
                     <div class="col-6">
                         <div class="input-group-glass">
                             <input type="number" class="input-glass" @bind="stockCount" required min="1" placeholder="50" />
-                            <label>Initial Stock Count</label>
-                        </div>
-                    </div>
-                    <div class="col-6">
-                        <div class="input-group-glass">
-                            <input type="text" class="input-glass" @bind="imageUrl" placeholder="https://images.unsplash.com/..." />
-                            <label>Image URL (Optional)</label>
+                            <label>Initial Stock</label>
                         </div>
                     </div>
                 </div>
 
                 <!-- Quick Image Presets -->
-                <div class="preset-images-wrapper mb-4">
+                <div>
                     <span class="small-label d-block mb-2 text-muted">Quick Image Presets</span>
                     <div class="preset-grid d-flex gap-2">
                         <button type="button" class="preset-btn @(imageUrl == imgCoffee ? "active" : "")" @onclick="() => imageUrl = imgCoffee">
@@ -71,7 +73,7 @@
                             <span>Espresso</span>
                         </button>
                         <button type="button" class="preset-btn @(imageUrl == imgCroissant ? "active" : "")" @onclick="() => imageUrl = imgCroissant">
-                            <img src="@imgCroissant" alt="Croissant" />
+                            <img src="@imgCroissant" alt="Pastry" />
                             <span>Pastry</span>
                         </button>
                         <button type="button" class="preset-btn @(imageUrl == imgCake ? "active" : "")" @onclick="() => imageUrl = imgCake">
@@ -85,11 +87,11 @@
                     </div>
                 </div>
 
-                <div class="modal-footer d-flex gap-2 justify-content-end">
+                <div class="modal-footer d-flex gap-2 justify-content-end mt-2 pt-3 border-top">
                     <button type="button" class="btn-pill btn-glass" @onclick="Close">Cancel</button>
-                    <button type="submit" class="btn-pill btn-primary">
+                    <button type="submit" class="btn-pill btn-primary px-4">
                         <i data-lucide="plus-circle" class="me-1"></i>
-                        <span>Publish Dish to Customer Menu</span>
+                        <span>Publish Dish to Menu</span>
                     </button>
                 </div>
             </form>
@@ -105,8 +107,8 @@
         width: 100vw;
         height: 100vh;
         background: rgba(0, 0, 0, 0.65);
-        backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         z-index: 2000;
         display: flex;
         align-items: center;
@@ -115,13 +117,65 @@
     }
 
     .modal-container {
-        max-width: 540px;
+        max-width: 520px;
         width: 100%;
-        padding: 1.75rem;
-        background: var(--color-bg-surface, #1e1e2d);
-        border: 1px solid rgba(255, 255, 255, 0.15);
-        border-radius: 20px;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        padding: 2rem;
+        background: var(--color-glass, rgba(255, 255, 255, 0.85));
+        backdrop-filter: var(--blur-glass, blur(28px));
+        -webkit-backdrop-filter: var(--blur-glass, blur(28px));
+        border: 1px solid var(--color-glass-border, rgba(255, 255, 255, 0.3));
+        border-radius: 28px;
+        box-shadow: var(--shadow-premium, 0 20px 50px rgba(0,0,0,0.25));
+    }
+
+    .payment-card-badge {
+        width: 48px;
+        height: 48px;
+        border-radius: 16px;
+        background: rgba(99, 102, 241, 0.12);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 22px;
+    }
+
+    .category-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+    }
+
+    .cat-card-tile {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 12px 6px;
+        border-radius: 16px;
+        border: 1px solid var(--color-border, rgba(0,0,0,0.08));
+        background: var(--color-bg-surface, rgba(255, 255, 255, 0.6));
+        color: var(--color-text-secondary, #64748b);
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+
+    .cat-card-tile i {
+        width: 20px;
+        height: 20px;
+    }
+
+    .cat-card-tile span {
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .cat-card-tile.active, .cat-card-tile:hover {
+        border-color: var(--color-primary, #6366f1);
+        background: rgba(99, 102, 241, 0.12);
+        color: var(--color-primary, #6366f1);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
     }
 
     .preset-btn {
@@ -131,10 +185,10 @@
         align-items: center;
         gap: 4px;
         padding: 6px;
-        border-radius: 12px;
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        background: rgba(255, 255, 255, 0.05);
-        color: var(--color-text-muted, #a1a1aa);
+        border-radius: 14px;
+        border: 1px solid var(--color-border, rgba(0,0,0,0.08));
+        background: rgba(255, 255, 255, 0.6);
+        color: var(--color-text-muted, #94a3b8);
         cursor: pointer;
         transition: all 0.2s ease;
     }
@@ -142,7 +196,7 @@
     .preset-btn img {
         width: 44px;
         height: 44px;
-        border-radius: 8px;
+        border-radius: 10px;
         object-fit: cover;
     }
 
@@ -152,8 +206,8 @@
 
     .preset-btn.active, .preset-btn:hover {
         border-color: var(--color-primary, #6366f1);
-        background: rgba(99, 102, 241, 0.15);
-        color: #fff;
+        background: rgba(99, 102, 241, 0.12);
+        color: var(--color-primary, #6366f1);
     }
 </style>
 

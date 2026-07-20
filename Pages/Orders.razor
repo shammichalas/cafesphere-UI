@@ -8,139 +8,214 @@
 <PageTitle>Orders Queue — CafeSphere</PageTitle>
 
 <div class="orders-layout animate-slide-up">
-    <!-- Top Filter Controls -->
-    <div class="orders-header glass-card">
-        <div class="search-bar-wrap">
-            <i data-lucide="search" class="search-icon"></i>
-            <input @bind="searchQuery" @bind:event="oninput" type="text" placeholder="Search orders by customer or ID..." class="orders-search-input" />
-        </div>
-        
-        <div class="filter-toggles">
-            @foreach (var status in statusOptions)
-            {
-                <button class="filter-tab @(selectedStatus == status ? "active" : "")" @onclick="() => SetStatusFilter(status)">
-                    @status
-                </button>
-            }
-        </div>
-    </div>
+    @if (AuthService.CurrentUser != null && AuthService.CurrentUser.Role == "Customer")
+    {
+        <!-- Friendly Customer Order History Feed -->
+        <div class="customer-orders-container animate-fade-in">
+            <div class="d-flex align-items-center justify-content-between mb-4 flex-wrap gap-2">
+                <div>
+                    <h2>My Orders & Trackers</h2>
+                    <p class="text-secondary small m-0">View your active order status and past receipts</p>
+                </div>
+                <a href="/pos" class="btn-pill btn-primary">
+                    <i data-lucide="shopping-bag" class="me-1"></i>
+                    <span>+ Order New Coffee</span>
+                </a>
+            </div>
 
-    <!-- Table Grid container -->
-    <div class="table-container-glass">
-        <table class="table-glass">
-            <thead>
-                <tr>
-                    <th @onclick='() => ToggleSort("Id")' style="cursor:pointer;">
-                        Order ID <i data-lucide="@GetSortIcon("Id")" class="sort-icon-inline"></i>
-                    </th>
-                    <th @onclick='() => ToggleSort("Time")' style="cursor:pointer;">
-                        Timestamp <i data-lucide="@GetSortIcon("Time")" class="sort-icon-inline"></i>
-                    </th>
-                    <th>Customer</th>
-                    <th>Items</th>
-                    <th @onclick='() => ToggleSort("Total")' style="cursor:pointer;">
-                        Total Value <i data-lucide="@GetSortIcon("Total")" class="sort-icon-inline"></i>
-                    </th>
-                    <th>Payment</th>
-                    <th>Status</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                @if (!FilteredOrders.Any())
-                {
-                    <tr>
-                        <td colspan="8" class="text-center" style="padding: var(--space-xl) 0;">
-                            <div class="empty-state">
-                                <i data-lucide="list-x" class="empty-icon"></i>
-                                <p>No transaction history matched your query.</p>
-                            </div>
-                        </td>
-                    </tr>
-                }
-                else
-                {
+            @if (!FilteredOrders.Any())
+            {
+                <div class="glass-card text-center py-5 px-4 my-4 animate-fade-in" style="max-width: 480px; margin: 40px auto;">
+                    <div class="brand-badge mx-auto mb-3" style="width: 64px; height: 64px; border-radius: 50%; background: rgba(99, 102, 241, 0.12); display: flex; align-items: center; justify-content: center;">
+                        <i data-lucide="cup-soda" style="width: 32px; height: 32px; color: var(--color-primary);"></i>
+                    </div>
+                    <h3 class="mb-2">No Orders Yet</h3>
+                    <p class="text-secondary mb-4">You haven't placed any orders yet. Explore our artisanal coffee and bakery menu to place your first order!</p>
+                    <a href="/pos" class="btn-pill btn-primary px-4 py-2">
+                        <i data-lucide="sparkles" class="me-1"></i>
+                        <span>Browse Order Menu</span>
+                    </a>
+                </div>
+            }
+            else
+            {
+                <div class="customer-order-cards-grid d-flex flex-column gap-3">
                     @foreach (var order in FilteredOrders)
                     {
-                        <tr class="hover-row @(expandedOrder == order.Id ? "expanded-row-bg" : "")" @onclick="() => ToggleRowExpand(order.Id)" style="cursor: pointer;">
-                            <td class="font-semibold text-primary">@order.Id</td>
-                            <td>@order.CreatedAt.ToString("MMM dd, hh:mm tt")</td>
-                            <td class="font-semibold">@order.CustomerName</td>
-                            <td>@order.Items.Sum(i => i.Quantity) items</td>
-                            <td class="font-semibold text-primary">$@order.Total.ToString("F2")</td>
-                            <td>
-                                <span class="badge-pill badge-info">@order.PaymentMethod</span>
-                            </td>
-                            <td>
-                                <span class="badge-pill @GetStatusBadgeClass(order.Status)">@order.Status</span>
-                            </td>
-                            <td>
-                                <button class="btn-pill btn-glass btn-icon" @onclick:stopPropagation @onclick="() => ToggleRowExpand(order.Id)">
-                                    <i data-lucide="@(expandedOrder == order.Id ? "chevron-up" : "chevron-down")"></i>
-                                </button>
+                        <div class="glass-card customer-order-card p-4">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <div>
+                                    <span class="badge-pill badge-info me-2 font-mono">#@order.Id</span>
+                                    <span class="text-muted small">@order.CreatedAt.ToString("MMM dd, yyyy • hh:mm tt")</span>
+                                </div>
+                                <span class="badge-pill @GetStatusBadgeClass(order.Status) px-3 py-1">
+                                    @order.Status
+                                </span>
+                            </div>
+
+                            <!-- Ordered Items List -->
+                            <div class="customer-items-summary mb-3 p-3" style="background: rgba(0,0,0,0.03); border-radius: 12px;">
+                                <span class="small-label d-block mb-2 text-muted">Ordered Items</span>
+                                <div class="d-flex flex-column gap-2">
+                                    @foreach (var item in order.Items)
+                                    {
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span><strong class="text-primary me-1">@item.Quantity x</strong> @item.Item.Name</span>
+                                            <span class="font-semibold">$@((item.Item.Price * item.Quantity).ToString("F2"))</span>
+                                        </div>
+                                    }
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                                <span class="text-muted small">Payment Mode: <strong class="text-dark">@order.PaymentMethod</strong></span>
+                                <div>
+                                    <span class="text-muted small me-2">Total Amount:</span>
+                                    <span class="font-bold text-primary font-mono" style="font-size: 1.2rem;">$@order.Total.ToString("F2")</span>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+    else
+    {
+        <!-- Staff Administrative Table Controls -->
+        <div class="orders-header glass-card">
+            <div class="search-bar-wrap">
+                <i data-lucide="search" class="search-icon"></i>
+                <input @bind="searchQuery" @bind:event="oninput" type="text" placeholder="Search orders by customer or ID..." class="orders-search-input" />
+            </div>
+            
+            <div class="filter-toggles">
+                @foreach (var status in statusOptions)
+                {
+                    <button class="filter-tab @(selectedStatus == status ? "active" : "")" @onclick="() => SetStatusFilter(status)">
+                        @status
+                    </button>
+                }
+            </div>
+        </div>
+
+        <!-- Table Grid container for Staff -->
+        <div class="table-container-glass">
+            <table class="table-glass">
+                <thead>
+                    <tr>
+                        <th @onclick='() => ToggleSort("Id")' style="cursor:pointer;">
+                            Order ID <i data-lucide="@GetSortIcon("Id")" class="sort-icon-inline"></i>
+                        </th>
+                        <th @onclick='() => ToggleSort("Time")' style="cursor:pointer;">
+                            Timestamp <i data-lucide="@GetSortIcon("Time")" class="sort-icon-inline"></i>
+                        </th>
+                        <th>Customer</th>
+                        <th>Items</th>
+                        <th @onclick='() => ToggleSort("Total")' style="cursor:pointer;">
+                            Total Value <i data-lucide="@GetSortIcon("Total")" class="sort-icon-inline"></i>
+                        </th>
+                        <th>Payment</th>
+                        <th>Status</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (!FilteredOrders.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center" style="padding: var(--space-xl) 0;">
+                                <div class="empty-state">
+                                    <i data-lucide="list-x" class="empty-icon"></i>
+                                    <p>No transaction history matched your query.</p>
+                                </div>
                             </td>
                         </tr>
-
-                        <!-- Row Expansion: Order items detail -->
-                        @if (expandedOrder == order.Id)
+                    }
+                    else
+                    {
+                        @foreach (var order in FilteredOrders)
                         {
-                            <tr class="expanded-detail-row" @onclick:stopPropagation>
-                                <td colspan="8">
-                                    <div class="order-expansion animate-fade-in">
-                                        <div class="expansion-grid">
-                                            <div class="order-details-pane">
-                                                <span class="small-label font-semibold">Ordered Items</span>
-                                                <div class="exp-items-list">
-                                                    @foreach (var item in order.Items)
-                                                    {
-                                                        <div class="exp-item">
-                                                            <span class="qty font-semibold">@item.Quantity x</span>
-                                                            <span class="name">@item.Item.Name</span>
-                                                            <span class="price">$@((item.Item.Price * item.Quantity).ToString("F2"))</span>
-                                                            @if (!string.IsNullOrEmpty(item.Notes))
-                                                            {
-                                                                <span class="notes"><i data-lucide="info"></i> <i>@item.Notes</i></span>
-                                                            }
-                                                        </div>
-                                                    }
-                                                </div>
-                                            </div>
+                            <tr class="hover-row @(expandedOrder == order.Id ? "expanded-row-bg" : "")" @onclick="() => ToggleRowExpand(order.Id)" style="cursor: pointer;">
+                                <td class="font-semibold text-primary">@order.Id</td>
+                                <td>@order.CreatedAt.ToString("MMM dd, hh:mm tt")</td>
+                                <td class="font-semibold">@order.CustomerName</td>
+                                <td>@order.Items.Sum(i => i.Quantity) items</td>
+                                <td class="font-semibold text-primary">$@order.Total.ToString("F2")</td>
+                                <td>
+                                    <span class="badge-pill badge-info">@order.PaymentMethod</span>
+                                </td>
+                                <td>
+                                    <span class="badge-pill @GetStatusBadgeClass(order.Status)">@order.Status</span>
+                                </td>
+                                <td>
+                                    <button class="btn-pill btn-glass btn-icon" @onclick:stopPropagation @onclick="() => ToggleRowExpand(order.Id)">
+                                        <i data-lucide="@(expandedOrder == order.Id ? "chevron-up" : "chevron-down")"></i>
+                                    </button>
+                                </td>
+                            </tr>
 
-                                            <div class="order-receipt-pane">
-                                                <span class="small-label font-semibold">Financial Receipt</span>
-                                                <div class="receipt-box">
-                                                    <div class="r-row"><span>Subtotal</span><span>$@order.Subtotal.ToString("F2")</span></div>
-                                                    <div class="r-row"><span>Sales Tax (8.0%)</span><span>$@order.Tax.ToString("F2")</span></div>
-                                                    @if (order.Discount > 0)
-                                                    {
-                                                        <div class="r-row discount"><span>Discount</span><span>-$@order.Discount.ToString("F2")</span></div>
-                                                    }
-                                                    <div class="r-row total font-semibold"><span>Total Paid</span><span>$@order.Total.ToString("F2")</span></div>
+                            <!-- Row Expansion: Order items detail -->
+                            @if (expandedOrder == order.Id)
+                            {
+                                <tr class="expanded-detail-row" @onclick:stopPropagation>
+                                    <td colspan="8">
+                                        <div class="order-expansion animate-fade-in">
+                                            <div class="expansion-grid">
+                                                <div class="order-details-pane">
+                                                    <span class="small-label font-semibold">Ordered Items</span>
+                                                    <div class="exp-items-list">
+                                                        @foreach (var item in order.Items)
+                                                        {
+                                                            <div class="exp-item">
+                                                                <span class="qty font-semibold">@item.Quantity x</span>
+                                                                <span class="name">@item.Item.Name</span>
+                                                                <span class="price">$@((item.Item.Price * item.Quantity).ToString("F2"))</span>
+                                                                @if (!string.IsNullOrEmpty(item.Notes))
+                                                                {
+                                                                    <span class="notes"><i data-lucide="info"></i> <i>@item.Notes</i></span>
+                                                                }
+                                                            </div>
+                                                        }
+                                                    </div>
                                                 </div>
-                                                
-                                                <div class="order-actions-wrap">
-                                                    @if (order.Status != OrderStatus.Completed && order.Status != OrderStatus.Cancelled)
-                                                    {
-                                                        <button class="btn-pill btn-danger" @onclick="() => CancelOrder(order)">
-                                                            Cancel & Refund Order
-                                                        </button>
-                                                    }
-                                                    else
-                                                    {
-                                                        <span class="caption">Transaction settled.</span>
-                                                    }
+
+                                                <div class="order-receipt-pane">
+                                                    <span class="small-label font-semibold">Financial Receipt</span>
+                                                    <div class="receipt-box">
+                                                        <div class="r-row"><span>Subtotal</span><span>$@order.Subtotal.ToString("F2")</span></div>
+                                                        <div class="r-row"><span>Sales Tax (8.0%)</span><span>$@order.Tax.ToString("F2")</span></div>
+                                                        @if (order.Discount > 0)
+                                                        {
+                                                            <div class="r-row discount"><span>Discount</span><span>-$@order.Discount.ToString("F2")</span></div>
+                                                        }
+                                                        <div class="r-row total font-semibold"><span>Total Paid</span><span>$@order.Total.ToString("F2")</span></div>
+                                                    </div>
+                                                    
+                                                    <div class="order-actions-wrap">
+                                                        @if (order.Status != OrderStatus.Completed && order.Status != OrderStatus.Cancelled)
+                                                        {
+                                                            <button class="btn-pill btn-danger" @onclick="() => CancelOrder(order)">
+                                                                Cancel & Refund Order
+                                                            </button>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span class="caption">Transaction settled.</span>
+                                                        }
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </td>
-                            </tr>
+                                    </td>
+                                </tr>
+                            }
                         }
                     }
-                }
-            </tbody>
-        </table>
-    </div>
+                </tbody>
+            </table>
+        </div>
+    }
 </div>
 
 <style>
