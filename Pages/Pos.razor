@@ -962,6 +962,11 @@
         }).ToList();
         successTotal = total;
 
+        var curUser = AuthService.CurrentUser;
+        var effectiveCustomerName = !string.IsNullOrWhiteSpace(customerName)
+            ? customerName
+            : (curUser != null ? (string.IsNullOrWhiteSpace(curUser.FullName) ? curUser.Username : curUser.FullName) : "Walk-in Guest");
+
         // 1. Submit Order to Backend REST API & SignalR Hub
         try
         {
@@ -973,7 +978,7 @@
             }).Cast<object>().ToList();
 
             var createdOrder = await ApiService.CreateOrderAsync(
-                customerName: string.IsNullOrWhiteSpace(customerName) ? "Walk-in Guest" : customerName,
+                customerName: effectiveCustomerName,
                 orderType: 0, // DineIn
                 items: itemPayload
             );
@@ -985,11 +990,11 @@
         }
         catch
         {
-            // Proceed to local state fallback
+            // Dev fallback
         }
 
         // 2. Place Order in local DataService state for instant client-side updates
-        var placedOrder = DataService.PlaceOrder(cartItems, customerName, paymentMethod, discount);
+        var placedOrder = DataService.PlaceOrder(cartItems, effectiveCustomerName, paymentMethod, discount);
         if (string.IsNullOrEmpty(successTicketNo))
         {
             successTicketNo = placedOrder.TicketNumber;

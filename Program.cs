@@ -15,7 +15,7 @@ var apiBaseUrl = builder.Configuration["ApiBaseUrl"]
 
 if (string.IsNullOrWhiteSpace(apiBaseUrl))
 {
-    apiBaseUrl = builder.HostEnvironment.BaseAddress;
+    apiBaseUrl = "http://localhost:5000/";
 }
 
 builder.Services.AddScoped(sp => new HttpClient 
