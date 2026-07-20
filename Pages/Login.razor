@@ -1,0 +1,122 @@
+@page "/login"
+@inject UI.Services.AuthService AuthService
+@inject NavigationManager Navigation
+
+<div class="auth-page-container">
+    <div class="auth-card glass-panel">
+        <div class="auth-header text-center">
+            <div class="brand-logo mb-3">
+                <i class="bi bi-cup-hot-fill text-accent fs-1"></i>
+            </div>
+            <h2 class="auth-title">Welcome to CafeSphere</h2>
+            <p class="auth-subtitle text-muted">Enterprise Cafe Management Platform</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger fade show d-flex align-items-center mb-4" role="alert">
+                <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+                <div>@errorMessage</div>
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(successMessage))
+        {
+            <div class="alert alert-success fade show d-flex align-items-center mb-4" role="alert">
+                <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+                <div>@successMessage</div>
+            </div>
+        }
+
+        <form @onsubmit="HandleLogin">
+            <div class="form-group mb-3">
+                <label class="form-label text-light">Email or Username</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-envelope"></i></span>
+                    <input type="text" class="form-control bg-dark text-light border-secondary" placeholder="admin@cafesphere.com" @bind="emailOrUsername" required />
+                </div>
+            </div>
+
+            <div class="form-group mb-4">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="form-label text-light mb-0">Password</label>
+                    <a href="javascript:void(0)" class="text-accent text-decoration-none small">Forgot Password?</a>
+                </div>
+                <div class="input-group">
+                    <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-lock"></i></span>
+                    <input type="password" class="form-control bg-dark text-light border-secondary" placeholder="••••••••" @bind="password" required />
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100 py-2 font-weight-bold shadow-lg text-uppercase" disabled="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span>Authenticating...</span>
+                }
+                else
+                {
+                    <span>Sign In to Portal</span>
+                }
+            </button>
+        </form>
+
+        <div class="demo-credentials mt-4 pt-3 border-top border-secondary text-center">
+            <p class="text-muted small mb-2">Quick Demo Fill:</p>
+            <div class="d-flex justify-content-center gap-2">
+                <button type="button" class="btn btn-sm btn-outline-info" @onclick='() => FillDemo("admin@cafesphere.com", "Admin@123")'>Admin</button>
+                <button type="button" class="btn btn-sm btn-outline-warning" @onclick='() => FillDemo("cashier@cafesphere.com", "Cashier@123")'>Cashier</button>
+                <button type="button" class="btn btn-sm btn-outline-success" @onclick='() => FillDemo("kitchen@cafesphere.com", "Kitchen@123")'>Kitchen</button>
+            </div>
+        </div>
+
+        <div class="auth-footer text-center mt-4">
+            <span class="text-muted">Don't have an account? </span>
+            <a href="/register" class="text-accent font-weight-bold text-decoration-none">Create Account</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string emailOrUsername = "admin@cafesphere.com";
+    private string password = "Admin@123";
+    private bool isLoading = false;
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthService.InitializeAsync();
+        if (AuthService.IsAuthenticated)
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+
+    private void FillDemo(string email, string pwd)
+    {
+        emailOrUsername = email;
+        password = pwd;
+    }
+
+    private async Task HandleLogin()
+    {
+        isLoading = true;
+        errorMessage = null;
+        successMessage = null;
+
+        var result = await AuthService.LoginAsync(emailOrUsername, password);
+        isLoading = false;
+
+        if (result.Success)
+        {
+            successMessage = "Authentication successful! Redirecting to Dashboard...";
+            await Task.Delay(1000);
+            Navigation.NavigateTo("/");
+        }
+        else
+        {
+            errorMessage = result.Message;
+        }
+    }
+}

@@ -1,5 +1,6 @@
 @inherits LayoutComponentBase
 @inject MockDataService DataService
+@inject UI.Services.AuthService AuthService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @implements IDisposable
@@ -25,13 +26,27 @@
         </nav>
 
         <div class="sidebar-footer">
-            <div class="profile-card">
-                <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" alt="Profile" class="avatar" />
-                <div class="profile-info">
-                    <span class="profile-name">Alexandra S.</span>
-                    <span class="profile-role">Manager</span>
+            @if (AuthService.IsAuthenticated && AuthService.CurrentUser != null)
+            {
+                <div class="profile-card d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center gap-2">
+                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" alt="Profile" class="avatar" />
+                        <div class="profile-info">
+                            <span class="profile-name">@AuthService.CurrentUser.FullName</span>
+                            <span class="profile-role">@AuthService.CurrentUser.Role</span>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2" title="Logout" @onclick="Logout">
+                        <i data-lucide="log-out"></i>
+                    </button>
                 </div>
-            </div>
+            }
+            else
+            {
+                <div class="profile-card text-center py-2">
+                    <a href="/login" class="btn btn-sm btn-primary w-100 font-weight-bold">Sign In</a>
+                </div>
+            }
         </div>
     </aside>
 
@@ -168,7 +183,6 @@
     private bool isPageLoading = false;
     private DotNetObjectReference<MainLayout>? dotnetRef;
 
-    // Real-time calculated properties from Service State
     private decimal todaySales => DataService.Orders
         .Where(o => o.CreatedAt.Date == DateTime.Today && o.Status == OrderStatus.Completed)
         .Sum(o => o.Total);
@@ -182,8 +196,11 @@
     protected override async Task OnInitializedAsync()
     {
         DataService.OnChange += StateHasChanged;
+        AuthService.OnAuthStateChanged += StateHasChanged;
         Navigation.LocationChanged += OnLocationChanged;
         dotnetRef = DotNetObjectReference.Create(this);
+
+        await AuthService.InitializeAsync();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -215,6 +232,12 @@
         DataService.MarkAllNotificationsAsRead();
     }
 
+    private async Task Logout()
+    {
+        await AuthService.LogoutAsync();
+        Navigation.NavigateTo("/login");
+    }
+
     [JSInvokable]
     public void ToggleAiAssistant()
     {
@@ -235,10 +258,9 @@
     private async void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
         isPageLoading = true;
-        isMobileSidebarOpen = false; // Auto close sidebar on navigation
+        isMobileSidebarOpen = false;
         StateHasChanged();
 
-        // Simulate elegant page load skeleton transition
         await Task.Delay(350);
         isPageLoading = false;
         
@@ -257,6 +279,7 @@
     public void Dispose()
     {
         DataService.OnChange -= StateHasChanged;
+        AuthService.OnAuthStateChanged -= StateHasChanged;
         Navigation.LocationChanged -= OnLocationChanged;
         dotnetRef?.Dispose();
     }
