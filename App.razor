@@ -1,6 +1,24 @@
-﻿<Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
-    <Found Context="routeData">
-        <RouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)"/>
-        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
-    </Found>
-</Router>
+<CascadingAuthenticationState>
+    <Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+        <Found Context="routeData">
+            <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+                <NotAuthorized>
+                    <div class="p-4 text-center my-5 animate-fade-in">
+                        <div class="glass-card mx-auto p-4" style="max-width: 480px; margin: 40px auto;">
+                            <i data-lucide="shield-alert" style="width: 48px; height: 48px; color: var(--color-danger);" class="mb-3"></i>
+                            <h3 class="mb-2">Access Restricted</h3>
+                            <p class="text-secondary mb-4">You do not have the required role permissions to access this page.</p>
+                            <a href="/login" class="btn btn-pill btn-primary">Sign In with Authorized Account</a>
+                        </div>
+                    </div>
+                </NotAuthorized>
+                <Authorizing>
+                    <div class="p-4 text-center my-5">
+                        <p class="text-muted">Verifying permissions...</p>
+                    </div>
+                </Authorizing>
+            </AuthorizeRouteView>
+            <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+        </Found>
+    </Router>
+</CascadingAuthenticationState>

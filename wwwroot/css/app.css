@@ -85,26 +85,26 @@ h1, h2, h3, h4, .display-text {
 }
 
 .display-text {
-    font-size: 72px;
+    font-size: clamp(36px, 8vw, 72px);
 }
 
 h1 {
-    font-size: 56px;
+    font-size: clamp(28px, 6vw, 56px);
     letter-spacing: -0.03em;
 }
 
 h2 {
-    font-size: 42px;
+    font-size: clamp(24px, 5vw, 42px);
     letter-spacing: -0.02em;
 }
 
 h3 {
-    font-size: 32px;
+    font-size: clamp(20px, 4vw, 32px);
     letter-spacing: -0.02em;
 }
 
 h4 {
-    font-size: 24px;
+    font-size: clamp(18px, 3.5vw, 24px);
     letter-spacing: -0.01em;
 }
 
@@ -350,12 +350,16 @@ strong, .font-semibold {
     border: 1px solid var(--color-glass-border);
     border-radius: var(--radius-table);
     box-shadow: var(--shadow-premium);
-    overflow: hidden;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    width: 100%;
+    display: block;
     margin-bottom: var(--space-md);
 }
 
 .table-glass {
     width: 100%;
+    min-width: 600px;
     border-collapse: collapse;
     text-align: left;
 }
@@ -517,7 +521,7 @@ strong, .font-semibold {
 
 @media (max-width: 900px) {
     .dashboard-grid-3 {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(2, 1fr);
     }
     .app-content {
         padding: var(--space-sm);
@@ -525,18 +529,55 @@ strong, .font-semibold {
 }
 
 @media (max-width: 768px) {
-    .dashboard-grid-2 {
-        grid-template-columns: 1fr;
+    .dashboard-grid-4,
+    .dashboard-grid-3,
+    .dashboard-grid-2,
+    .dashboard-grid-stats,
+    .dashboard-grid-main {
+        grid-template-columns: 1fr !important;
     }
+
     .app-shell {
-        flex-direction: column;
+        flex-direction: row;
+        height: 100vh;
+        height: 100dvh;
     }
+
     .app-main {
-        height: auto;
-        overflow: visible;
+        height: 100vh;
+        height: 100dvh;
+        overflow: hidden;
     }
+
     .app-content {
-        overflow-y: visible;
-        height: auto;
+        padding: 14px 14px 28px 14px;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .glass-card {
+        padding: 16px;
+        border-radius: 20px;
+    }
+
+    .btn-pill {
+        min-height: 44px;
+        padding: 10px 18px;
+    }
+}
+
+@media (max-width: 576px) {
+    .app-content {
+        padding: 10px 10px 40px 10px;
+    }
+
+    .glass-card {
+        padding: 12px;
+        border-radius: 16px;
+    }
+
+    .input-glass {
+        height: 48px;
+        font-size: 14px;
     }
 }

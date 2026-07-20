@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using UI;
@@ -17,5 +18,8 @@ builder.Services.AddScoped(sp => new HttpClient
 builder.Services.AddSingleton<MockDataService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<ApiService>();
+
+builder.Services.AddAuthorizationCore();
+builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
 
 await builder.Build().RunAsync();

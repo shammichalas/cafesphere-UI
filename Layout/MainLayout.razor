@@ -5,175 +5,184 @@
 @inject IJSRuntime JS
 @implements IDisposable
 
-<div class="app-shell">
-    <!-- Mobile Sidebar overlay click-away -->
-    <div class="mobile-sidebar-overlay @(isMobileSidebarOpen ? "open" : "")" @onclick="ToggleMobileSidebar"></div>
+@if (IsAuthPage)
+{
+    <main class="auth-standalone-viewport animate-fade-in">
+        @Body
+    </main>
+}
+else
+{
+    <div class="app-shell">
+        <!-- Mobile Sidebar overlay click-away -->
+        <div class="mobile-sidebar-overlay @(isMobileSidebarOpen ? "open" : "")" @onclick="ToggleMobileSidebar"></div>
 
-    <!-- Collapsible Sidebar -->
-    <aside class="sidebar-wrapper @(isSidebarCollapsed ? "collapsed" : "") @(isMobileSidebarOpen ? "open-mobile" : "")">
-        <div class="sidebar-header">
-            <div class="logo">
-                <i data-lucide="coffee" class="logo-icon"></i>
-                <span class="logo-text">CafeSphere</span>
-            </div>
-            <button class="btn-sidebar-toggle" @onclick="ToggleSidebar">
-                <i data-lucide="@(isSidebarCollapsed ? "chevron-right" : "chevron-left")"></i>
-            </button>
-        </div>
-
-        <nav class="sidebar-nav">
-            <NavMenu IsCollapsed="@isSidebarCollapsed" />
-        </nav>
-
-        <div class="sidebar-footer">
-            @if (AuthService.IsAuthenticated && AuthService.CurrentUser != null)
-            {
-                <div class="profile-card d-flex align-items-center justify-content-between">
-                    <div class="d-flex align-items-center gap-2">
-                        <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" alt="Profile" class="avatar" />
-                        <div class="profile-info">
-                            <span class="profile-name">@AuthService.CurrentUser.FullName</span>
-                            <span class="profile-role">@AuthService.CurrentUser.Role</span>
-                        </div>
-                    </div>
-                    <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2" title="Logout" @onclick="Logout">
-                        <i data-lucide="log-out"></i>
-                    </button>
+        <!-- Collapsible Sidebar -->
+        <aside class="sidebar-wrapper @(isSidebarCollapsed ? "collapsed" : "") @(isMobileSidebarOpen ? "open-mobile" : "")">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <i data-lucide="coffee" class="logo-icon"></i>
+                    <span class="logo-text">CafeSphere</span>
                 </div>
-            }
-            else
-            {
-                <div class="profile-card text-center py-2">
-                    <a href="/login" class="btn btn-sm btn-primary w-100 font-weight-bold">Sign In</a>
-                </div>
-            }
-        </div>
-    </aside>
-
-    <!-- Main Viewport -->
-    <div class="app-main">
-        <!-- Sticky Top Navigation -->
-        <header class="top-nav">
-            <div class="nav-left">
-                <!-- Hamburger Button (Mobile Only) -->
-                <button class="btn-nav-action mobile-hamburger-btn" @onclick="ToggleMobileSidebar">
-                    <i data-lucide="menu"></i>
-                </button>
-                
-                <!-- Search bar that opens Raycast Cmd+K -->
-                <div class="search-trigger" @onclick="OpenAiAssistant">
-                    <i data-lucide="search" class="search-icon"></i>
-                    <span class="search-placeholder">Search settings, POS or type commands...</span>
-                    <kbd class="shortcut-badge">⌘K</kbd>
-                </div>
-            </div>
-
-            <div class="nav-right">
-                <!-- Real-time Stats summary -->
-                <div class="nav-stats d-none-mobile">
-                    <div class="nav-stat-item">
-                        <span class="stat-lbl">Today's Sales</span>
-                        <span class="stat-val font-semibold">$@todaySales.ToString("F2")</span>
-                    </div>
-                    <div class="nav-stat-item">
-                        <span class="stat-lbl">Active Orders</span>
-                        <span class="stat-val font-semibold text-warning">@activeOrderCount</span>
-                    </div>
-                </div>
-
-                <!-- Notifications Bell -->
-                <button class="btn-nav-action @(hasUnreadNotifications ? "has-unread" : "")" @onclick="ToggleNotifications">
-                    <i data-lucide="bell"></i>
-                    @if (unreadCount > 0)
-                    {
-                        <span class="badge-count">@unreadCount</span>
-                    }
-                </button>
-
-                <!-- AI assistant trigger -->
-                <button class="btn-nav-action ai-spark-btn" @onclick="OpenAiAssistant">
-                    <i data-lucide="sparkles"></i>
+                <button class="btn-sidebar-toggle" @onclick="ToggleSidebar">
+                    <i data-lucide="@(isSidebarCollapsed ? "chevron-right" : "chevron-left")"></i>
                 </button>
             </div>
-        </header>
 
-        <!-- Dynamic Page Content -->
-        <main class="app-content-container">
-            <div class="app-content animate-fade-in">
-                @if (isPageLoading)
+            <nav class="sidebar-nav">
+                <NavMenu IsCollapsed="@isSidebarCollapsed" />
+            </nav>
+
+            <div class="sidebar-footer">
+                @if (AuthService.IsAuthenticated && AuthService.CurrentUser != null)
                 {
-                    <!-- Premium Glass Loading Skeleton View -->
-                    <div class="skeleton-page-loader animate-fade-in">
-                        <div class="skeleton-header">
-                            <div class="skeleton-shimmer title-shimmer"></div>
-                            <div class="skeleton-shimmer subtitle-shimmer"></div>
-                        </div>
-                        <div class="skeleton-grid">
-                            <div class="glass-card skeleton-card">
-                                <div class="skeleton-shimmer card-title-shimmer"></div>
-                                <div class="skeleton-shimmer card-text-shimmer"></div>
-                            </div>
-                            <div class="glass-card skeleton-card">
-                                <div class="skeleton-shimmer card-title-shimmer"></div>
-                                <div class="skeleton-shimmer card-text-shimmer"></div>
-                            </div>
-                            <div class="glass-card skeleton-card">
-                                <div class="skeleton-shimmer card-title-shimmer"></div>
-                                <div class="skeleton-shimmer card-text-shimmer"></div>
+                    <div class="profile-card d-flex align-items-center justify-content-between">
+                        <div class="d-flex align-items-center gap-2">
+                            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100" alt="Profile" class="avatar" />
+                            <div class="profile-info">
+                                <span class="profile-name">@AuthService.CurrentUser.FullName</span>
+                                <span class="profile-role">@AuthService.CurrentUser.Role</span>
                             </div>
                         </div>
+                        <button type="button" class="btn btn-sm btn-link text-danger p-0 ms-2" title="Logout" @onclick="Logout">
+                            <i data-lucide="log-out"></i>
+                        </button>
                     </div>
                 }
                 else
                 {
-                    @Body
+                    <div class="profile-card text-center py-2">
+                        <a href="/login" class="btn btn-sm btn-primary w-100 font-weight-bold">Sign In</a>
+                    </div>
                 }
             </div>
-        </main>
-    </div>
+        </aside>
 
-    <!-- Notification Drawer overlay -->
-    <div class="drawer-overlay @(isNotificationsOpen ? "open" : "")" @onclick="ToggleNotifications"></div>
-    <div class="drawer notification-drawer @(isNotificationsOpen ? "open" : "")">
-        <div class="drawer-header">
-            <h3>Notifications</h3>
-            <div class="drawer-actions">
-                <button class="btn-text-action" @onclick="MarkAllRead">Mark all read</button>
-                <button class="btn-icon-close" @onclick="ToggleNotifications">
-                    <i data-lucide="x"></i>
-                </button>
-            </div>
-        </div>
-        <div class="drawer-body">
-            @if (!DataService.Notifications.Any())
-            {
-                <div class="empty-state">
-                    <i data-lucide="bell-off" class="empty-icon"></i>
-                    <p>All quiet. No notifications yet.</p>
+        <!-- Main Viewport -->
+        <div class="app-main">
+            <!-- Sticky Top Navigation -->
+            <header class="top-nav">
+                <div class="nav-left">
+                    <!-- Hamburger Button (Mobile Only) -->
+                    <button class="btn-nav-action mobile-hamburger-btn" @onclick="ToggleMobileSidebar">
+                        <i data-lucide="menu"></i>
+                    </button>
+                    
+                    <!-- Search bar that opens Raycast Cmd+K -->
+                    <div class="search-trigger" @onclick="OpenAiAssistant">
+                        <i data-lucide="search" class="search-icon"></i>
+                        <span class="search-placeholder">Search settings, POS or type commands...</span>
+                        <kbd class="shortcut-badge">⌘K</kbd>
+                    </div>
                 </div>
-            }
-            else
-            {
-                <div class="notification-list">
-                    @foreach (var notif in DataService.Notifications)
+
+                <div class="nav-right">
+                    <!-- Real-time Stats summary -->
+                    <div class="nav-stats d-none-mobile">
+                        <div class="nav-stat-item">
+                            <span class="stat-lbl">Today's Sales</span>
+                            <span class="stat-val font-semibold">$@todaySales.ToString("F2")</span>
+                        </div>
+                        <div class="nav-stat-item">
+                            <span class="stat-lbl">Active Orders</span>
+                            <span class="stat-val font-semibold text-warning">@activeOrderCount</span>
+                        </div>
+                    </div>
+
+                    <!-- Notifications Bell -->
+                    <button class="btn-nav-action @(hasUnreadNotifications ? "has-unread" : "")" @onclick="ToggleNotifications">
+                        <i data-lucide="bell"></i>
+                        @if (unreadCount > 0)
+                        {
+                            <span class="badge-count">@unreadCount</span>
+                        }
+                    </button>
+
+                    <!-- AI assistant trigger -->
+                    <button class="btn-nav-action ai-spark-btn" @onclick="OpenAiAssistant">
+                        <i data-lucide="sparkles"></i>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dynamic Page Content -->
+            <main class="app-content-container">
+                <div class="app-content animate-fade-in">
+                    @if (isPageLoading)
                     {
-                        <div class="notification-card @notif.Type @(notif.IsRead ? "read" : "unread")">
-                            <div class="notif-indicator"></div>
-                            <div class="notif-content">
-                                <span class="notif-title font-semibold">@notif.Title</span>
-                                <p class="notif-msg">@notif.Message</p>
-                                <span class="notif-time">@GetRelativeTime(notif.Timestamp)</span>
+                        <!-- Premium Glass Loading Skeleton View -->
+                        <div class="skeleton-page-loader animate-fade-in">
+                            <div class="skeleton-header">
+                                <div class="skeleton-shimmer title-shimmer"></div>
+                                <div class="skeleton-shimmer subtitle-shimmer"></div>
+                            </div>
+                            <div class="skeleton-grid">
+                                <div class="glass-card skeleton-card">
+                                    <div class="skeleton-shimmer card-title-shimmer"></div>
+                                    <div class="skeleton-shimmer card-text-shimmer"></div>
+                                </div>
+                                <div class="glass-card skeleton-card">
+                                    <div class="skeleton-shimmer card-title-shimmer"></div>
+                                    <div class="skeleton-shimmer card-text-shimmer"></div>
+                                </div>
+                                <div class="glass-card skeleton-card">
+                                    <div class="skeleton-shimmer card-title-shimmer"></div>
+                                    <div class="skeleton-shimmer card-text-shimmer"></div>
+                                </div>
                             </div>
                         </div>
                     }
+                    else
+                    {
+                        @Body
+                    }
                 </div>
-            }
+            </main>
         </div>
-    </div>
 
-    <!-- Raycast AI Assistant Drawer -->
-    <UI.Components.AiAssistant IsVisible="@isAiAssistantOpen" OnClose="CloseAiAssistant" />
-</div>
+        <!-- Notification Drawer overlay -->
+        <div class="drawer-overlay @(isNotificationsOpen ? "open" : "")" @onclick="ToggleNotifications"></div>
+        <div class="drawer notification-drawer @(isNotificationsOpen ? "open" : "")">
+            <div class="drawer-header">
+                <h3>Notifications</h3>
+                <div class="drawer-actions">
+                    <button class="btn-text-action" @onclick="MarkAllRead">Mark all read</button>
+                    <button class="btn-icon-close" @onclick="ToggleNotifications">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="drawer-body">
+                @if (!DataService.Notifications.Any())
+                {
+                    <div class="empty-state">
+                        <i data-lucide="bell-off" class="empty-icon"></i>
+                        <p>All quiet. No notifications yet.</p>
+                    </div>
+                }
+                else
+                {
+                    <div class="notification-list">
+                        @foreach (var notif in DataService.Notifications)
+                        {
+                            <div class="notification-card @notif.Type @(notif.IsRead ? "read" : "unread")">
+                                <div class="notif-indicator"></div>
+                                <div class="notif-content">
+                                    <span class="notif-title font-semibold">@notif.Title</span>
+                                    <p class="notif-msg">@notif.Message</p>
+                                    <span class="notif-time">@GetRelativeTime(notif.Timestamp)</span>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Raycast AI Assistant Drawer -->
+        <UI.Components.AiAssistant IsVisible="@isAiAssistantOpen" OnClose="CloseAiAssistant" />
+    </div>
+}
 
 @code {
     private bool isSidebarCollapsed = false;
@@ -182,6 +191,15 @@
     private bool isAiAssistantOpen = false;
     private bool isPageLoading = false;
     private DotNetObjectReference<MainLayout>? dotnetRef;
+
+    private bool IsAuthPage
+    {
+        get
+        {
+            var uri = Navigation.Uri.ToLowerInvariant();
+            return uri.Contains("/login") || uri.Contains("/register");
+        }
+    }
 
     private decimal todaySales => DataService.Orders
         .Where(o => o.CreatedAt.Date == DateTime.Today && o.Status == OrderStatus.Completed)

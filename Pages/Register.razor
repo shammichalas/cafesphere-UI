@@ -198,8 +198,8 @@
         if (result.Success)
         {
             successMessage = "Account created successfully! Redirecting...";
-            await Task.Delay(800);
-            Navigation.NavigateTo("/");
+            await Task.Delay(500);
+            Navigation.NavigateTo("/orders");
         }
         else
         {

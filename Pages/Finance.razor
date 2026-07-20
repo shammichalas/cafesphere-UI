@@ -1,4 +1,5 @@
 @page "/finance"
+@attribute [Authorize(Roles = "SuperAdmin,Admin,Manager")]
 @inject MockDataService DataService
 @inject IJSRuntime JS
 @implements IDisposable

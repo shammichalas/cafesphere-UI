@@ -239,12 +239,31 @@
         if (result.Success)
         {
             successMessage = "Authenticated! Redirecting...";
-            await Task.Delay(800);
-            Navigation.NavigateTo("/");
+            await Task.Delay(500);
+            RedirectByRole(AuthService.CurrentUser?.Role);
         }
         else
         {
             errorMessage = result.Message;
+        }
+    }
+
+    private void RedirectByRole(string? role)
+    {
+        switch (role)
+        {
+            case "Customer":
+                Navigation.NavigateTo("/orders");
+                break;
+            case "KitchenStaff":
+                Navigation.NavigateTo("/kitchen");
+                break;
+            case "Cashier":
+                Navigation.NavigateTo("/pos");
+                break;
+            default:
+                Navigation.NavigateTo("/");
+                break;
         }
     }
 }

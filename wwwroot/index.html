@@ -110,8 +110,19 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="_framework/blazor.webassembly.js"></script>
     
-    <!-- Lucide JS Interop -->
+    <!-- Lucide JS Interop & DOM Safeguard -->
     <script>
+        // Safeguard Blazor WebAssembly DOM reconciliation against external DOM mutations (e.g. Lucide icon replacements)
+        (function () {
+            const originalRemoveChild = Node.prototype.removeChild;
+            Node.prototype.removeChild = function (child) {
+                if (child && child.parentNode === this) {
+                    return originalRemoveChild.call(this, child);
+                }
+                return child;
+            };
+        })();
+
         window.initializeLucide = () => {
             if (window.lucide) {
                 window.lucide.createIcons();

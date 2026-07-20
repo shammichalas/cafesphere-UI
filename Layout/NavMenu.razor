@@ -1,123 +1,169 @@
+@inject AuthService AuthService
+
 <div class="nav-items-list">
-    <!-- Main Group -->
-    <div class="nav-group">
-        @if (!IsCollapsed)
-        {
-            <span class="nav-group-title small-label">Operations</span>
-        }
-        
-        <NavLink class="nav-item-link" href="" Match="NavLinkMatch.All">
-            <i data-lucide="layout-dashboard" class="nav-icon"></i>
-            @if (!IsCollapsed)
-            {
-                <span class="nav-label">Dashboard</span>
-            }
-        </NavLink>
+    <AuthorizeView Roles="SuperAdmin,Admin,Manager">
+        <Authorized>
+            <!-- Operations Group for Admin/Manager -->
+            <div class="nav-group">
+                @if (!IsCollapsed)
+                {
+                    <span class="nav-group-title small-label">Operations</span>
+                }
+                <NavLink class="nav-item-link" href="" Match="NavLinkMatch.All">
+                    <i data-lucide="layout-dashboard" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Dashboard</span> }
+                </NavLink>
+                <NavLink class="nav-item-link" href="pos">
+                    <i data-lucide="shopping-cart" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Point of Sale</span> }
+                </NavLink>
+                <NavLink class="nav-item-link" href="kitchen">
+                    <i data-lucide="chef-hat" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Kitchen Display</span> }
+                </NavLink>
+                <NavLink class="nav-item-link" href="orders">
+                    <i data-lucide="list-todo" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Orders Queue</span> }
+                </NavLink>
+                <NavLink class="nav-item-link" href="reservations">
+                    <i data-lucide="calendar-days" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Reservations</span> }
+                </NavLink>
+            </div>
 
-        <NavLink class="nav-item-link" href="pos">
-            <i data-lucide="shopping-cart" class="nav-icon"></i>
-            @if (!IsCollapsed)
-            {
-                <span class="nav-label">Point of Sale</span>
-            }
-        </NavLink>
+            <!-- Management Group for Admin/Manager -->
+            <div class="nav-group">
+                @if (!IsCollapsed)
+                {
+                    <span class="nav-group-title small-label">Management</span>
+                }
+                <NavLink class="nav-item-link" href="inventory">
+                    <i data-lucide="boxes" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Inventory</span> }
+                </NavLink>
+                <NavLink class="nav-item-link" href="employees">
+                    <i data-lucide="users-round" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Staff roster</span> }
+                </NavLink>
+                <NavLink class="nav-item-link" href="customers">
+                    <i data-lucide="smile" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Loyalty Portal</span> }
+                </NavLink>
+            </div>
 
-        <NavLink class="nav-item-link" href="kitchen">
-            <i data-lucide="chef-hat" class="nav-icon"></i>
-            @if (!IsCollapsed)
-            {
-                <span class="nav-label">Kitchen Display</span>
-            }
-        </NavLink>
+            <!-- Enterprise Group for Admin/Manager -->
+            <div class="nav-group">
+                @if (!IsCollapsed)
+                {
+                    <span class="nav-group-title small-label">Enterprise</span>
+                }
+                <NavLink class="nav-item-link" href="finance">
+                    <i data-lucide="wallet" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Finances</span> }
+                </NavLink>
+                <NavLink class="nav-item-link" href="analytics">
+                    <i data-lucide="line-chart" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Analytics</span> }
+                </NavLink>
+                <NavLink class="nav-item-link" href="settings">
+                    <i data-lucide="settings" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Settings</span> }
+                </NavLink>
+            </div>
+        </Authorized>
+    </AuthorizeView>
 
-        <NavLink class="nav-item-link" href="orders">
-            <i data-lucide="list-todo" class="nav-icon"></i>
-            @if (!IsCollapsed)
-            {
-                <span class="nav-label">Orders Queue</span>
-            }
-        </NavLink>
+    <AuthorizeView Roles="Cashier">
+        <Authorized>
+            <div class="nav-group">
+                @if (!IsCollapsed)
+                {
+                    <span class="nav-group-title small-label">POS Operations</span>
+                }
+                <NavLink class="nav-item-link" href="pos">
+                    <i data-lucide="shopping-cart" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Point of Sale</span> }
+                </NavLink>
+                <NavLink class="nav-item-link" href="orders">
+                    <i data-lucide="list-todo" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Orders Queue</span> }
+                </NavLink>
+                <NavLink class="nav-item-link" href="customers">
+                    <i data-lucide="smile" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Customers</span> }
+                </NavLink>
+                <NavLink class="nav-item-link" href="reservations">
+                    <i data-lucide="calendar-days" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Reservations</span> }
+                </NavLink>
+                <NavLink class="nav-item-link" href="settings">
+                    <i data-lucide="settings" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Settings</span> }
+                </NavLink>
+            </div>
+        </Authorized>
+    </AuthorizeView>
 
-        <NavLink class="nav-item-link" href="reservations">
-            <i data-lucide="calendar-days" class="nav-icon"></i>
-            @if (!IsCollapsed)
-            {
-                <span class="nav-label">Reservations</span>
-            }
-        </NavLink>
-    </div>
+    <AuthorizeView Roles="KitchenStaff">
+        <Authorized>
+            <div class="nav-group">
+                @if (!IsCollapsed)
+                {
+                    <span class="nav-group-title small-label">Kitchen KDS</span>
+                }
+                <NavLink class="nav-item-link" href="kitchen">
+                    <i data-lucide="chef-hat" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Kitchen Display</span> }
+                </NavLink>
+                <NavLink class="nav-item-link" href="orders">
+                    <i data-lucide="list-todo" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Orders Queue</span> }
+                </NavLink>
+                <NavLink class="nav-item-link" href="settings">
+                    <i data-lucide="settings" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Settings</span> }
+                </NavLink>
+            </div>
+        </Authorized>
+    </AuthorizeView>
 
-    <!-- Management Group -->
-    <div class="nav-group">
-        @if (!IsCollapsed)
-        {
-            <span class="nav-group-title small-label">Management</span>
-        }
+    <AuthorizeView Roles="Customer">
+        <Authorized>
+            <div class="nav-group">
+                @if (!IsCollapsed)
+                {
+                    <span class="nav-group-title small-label">My Account</span>
+                }
+                <NavLink class="nav-item-link" href="orders">
+                    <i data-lucide="list-todo" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">My Orders</span> }
+                </NavLink>
+                <NavLink class="nav-item-link" href="pos">
+                    <i data-lucide="shopping-cart" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Order Menu</span> }
+                </NavLink>
+                <NavLink class="nav-item-link" href="reservations">
+                    <i data-lucide="calendar-days" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Reservations</span> }
+                </NavLink>
+                <NavLink class="nav-item-link" href="settings">
+                    <i data-lucide="settings" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Settings</span> }
+                </NavLink>
+            </div>
+        </Authorized>
+    </AuthorizeView>
 
-        <NavLink class="nav-item-link" href="inventory">
-            <i data-lucide="boxes" class="nav-icon"></i>
-            @if (!IsCollapsed)
-            {
-                <span class="nav-label">Inventory</span>
-            }
-        </NavLink>
-
-        <NavLink class="nav-item-link" href="employees">
-            <i data-lucide="users-round" class="nav-icon"></i>
-            @if (!IsCollapsed)
-            {
-                <span class="nav-label">Staff roster</span>
-            }
-        </NavLink>
-
-        <NavLink class="nav-item-link" href="customers">
-            <i data-lucide="smile" class="nav-icon"></i>
-            @if (!IsCollapsed)
-            {
-                <span class="nav-label">Loyalty Portal</span>
-            }
-        </NavLink>
-    </div>
-
-    <!-- Finance & System Group -->
-    <div class="nav-group">
-        @if (!IsCollapsed)
-        {
-            <span class="nav-group-title small-label">Enterprise</span>
-        }
-
-        <NavLink class="nav-item-link" href="finance">
-            <i data-lucide="wallet" class="nav-icon"></i>
-            @if (!IsCollapsed)
-            {
-                <span class="nav-label">Finances</span>
-            }
-        </NavLink>
-
-        <NavLink class="nav-item-link" href="analytics">
-            <i data-lucide="line-chart" class="nav-icon"></i>
-            @if (!IsCollapsed)
-            {
-                <span class="nav-label">Analytics</span>
-            }
-        </NavLink>
-
-        <NavLink class="nav-item-link" href="settings">
-            <i data-lucide="settings" class="nav-icon"></i>
-            @if (!IsCollapsed)
-            {
-                <span class="nav-label">Settings</span>
-            }
-        </NavLink>
-
-        <NavLink class="nav-item-link" href="login">
-            <i data-lucide="log-in" class="nav-icon"></i>
-            @if (!IsCollapsed)
-            {
-                <span class="nav-label">Sign In</span>
-            }
-        </NavLink>
-    </div>
+    <AuthorizeView>
+        <NotAuthorized>
+            <div class="nav-group">
+                <NavLink class="nav-item-link" href="login">
+                    <i data-lucide="log-in" class="nav-icon"></i>
+                    @if (!IsCollapsed) { <span class="nav-label">Sign In</span> }
+                </NavLink>
+            </div>
+        </NotAuthorized>
+    </AuthorizeView>
 </div>
 
 @code {
