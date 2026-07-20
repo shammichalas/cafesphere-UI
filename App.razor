@@ -1,5 +1,5 @@
 <CascadingAuthenticationState>
-    <Router AppAssembly="@typeof(App).Assembly" NotFoundPage="typeof(Pages.NotFound)">
+    <Router AppAssembly="@typeof(App).Assembly">
         <Found Context="routeData">
             <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
                 <NotAuthorized>
@@ -20,5 +20,18 @@
             </AuthorizeRouteView>
             <FocusOnNavigate RouteData="@routeData" Selector="h1" />
         </Found>
+        <NotFound>
+            <PageTitle>Page Not Found — CafeSphere</PageTitle>
+            <LayoutView Layout="@typeof(MainLayout)">
+                <div class="p-4 text-center my-5 animate-fade-in">
+                    <div class="glass-card mx-auto p-4" style="max-width: 480px; margin: 40px auto;">
+                        <i data-lucide="compass" style="width: 48px; height: 48px; color: var(--color-primary);" class="mb-3"></i>
+                        <h3 class="mb-2">Page Not Found</h3>
+                        <p class="text-secondary mb-4">Sorry, there's nothing at this address.</p>
+                        <a href="/pos" class="btn btn-pill btn-primary">Back to Order Menu</a>
+                    </div>
+                </div>
+            </LayoutView>
+        </NotFound>
     </Router>
 </CascadingAuthenticationState>
