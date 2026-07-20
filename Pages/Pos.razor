@@ -774,9 +774,12 @@
 </style>
 
 @code {
+    @inject ApiService ApiService
+
     private string searchQuery = string.Empty;
     private string selectedCategory = "All";
     private List<string> categories = new() { "All", "Coffee", "Bakery", "Dessert" };
+    private List<MenuItem> loadedMenuItems = new();
 
     private List<OrderItem> cartItems = new();
     private bool showPaymentModal = false;
@@ -798,15 +801,61 @@
     private decimal successTotal = 0m;
     private List<OrderItem> successCartSnap = new();
 
-    private IEnumerable<MenuItem> FilteredItems => DataService.MenuItems
-        .Where(i => (selectedCategory == "All" || i.Category == selectedCategory) &&
-                    (string.IsNullOrWhiteSpace(searchQuery) || 
-                     i.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) || 
-                     i.Category.Contains(searchQuery, StringComparison.OrdinalIgnoreCase)));
+    private IEnumerable<MenuItem> FilteredItems
+    {
+        get
+        {
+            var source = loadedMenuItems.Any() ? loadedMenuItems : DataService.MenuItems;
+            var result = source.AsEnumerable();
 
-    protected override void OnInitialized()
+            if (selectedCategory != "All")
+            {
+                result = result.Where(i => i.Category.Contains(selectedCategory, StringComparison.OrdinalIgnoreCase));
+            }
+
+            if (!string.IsNullOrWhiteSpace(searchQuery))
+            {
+                result = result.Where(i => i.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) || 
+                                           i.Category.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
+            }
+
+            return result;
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
     {
         DataService.OnChange += StateHasChanged;
+
+        try
+        {
+            var apiProducts = await ApiService.GetProductsAsync();
+            if (apiProducts.Any())
+            {
+                loadedMenuItems = apiProducts.Select(p => new MenuItem
+                {
+                    Id = p.Id,
+                    Name = p.Name,
+                    Category = string.IsNullOrWhiteSpace(p.CategoryName) ? "Coffee" : p.CategoryName,
+                    Price = p.Price,
+                    ImageUrl = string.IsNullOrWhiteSpace(p.ImageUrl) ? "https://images.unsplash.com/photo-151097252790b-a638d5216123?w=300" : p.ImageUrl,
+                    InStock = p.IsAvailable,
+                    StockCount = 100
+                }).ToList();
+            }
+
+            var apiCategories = await ApiService.GetCategoriesAsync();
+            if (apiCategories.Any())
+            {
+                var catNames = apiCategories.Select(c => c.Name).ToList();
+                catNames.Insert(0, "All");
+                categories = catNames;
+            }
+        }
+        catch
+        {
+            // Fallback to DataService
+        }
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -814,44 +863,38 @@
         await JS.InvokeVoidAsync("initializeLucide");
     }
 
-    private void SetCategory(string cat)
+    private void SetCategory(string category)
     {
-        selectedCategory = cat;
+        selectedCategory = category;
     }
 
     private void AddToCart(MenuItem item)
     {
-        if (item.StockCount <= 0) return;
-
         var existing = cartItems.FirstOrDefault(i => i.Item.Id == item.Id);
         if (existing != null)
         {
-            if (existing.Quantity < item.StockCount)
-            {
-                existing.Quantity++;
-            }
+            existing.Quantity++;
         }
         else
         {
-            cartItems.Add(new OrderItem { Item = item, Quantity = 1 });
+            cartItems.Add(new OrderItem
+            {
+                Item = item,
+                Quantity = 1,
+                Notes = ""
+            });
         }
     }
 
     private void IncreaseQty(OrderItem cartItem)
     {
-        if (cartItem.Quantity < cartItem.Item.StockCount)
-        {
-            cartItem.Quantity++;
-        }
+        cartItem.Quantity++;
     }
 
     private void DecreaseQty(OrderItem cartItem)
     {
-        if (cartItem.Quantity > 1)
-        {
-            cartItem.Quantity--;
-        }
-        else
+        cartItem.Quantity--;
+        if (cartItem.Quantity <= 0)
         {
             cartItems.Remove(cartItem);
         }
@@ -860,13 +903,14 @@
     private void ClearCart()
     {
         cartItems.Clear();
-        discount = 0m;
-        discountCode = string.Empty;
     }
 
     private void OpenPaymentModal()
     {
-        showPaymentModal = true;
+        if (cartItems.Any())
+        {
+            showPaymentModal = true;
+        }
     }
 
     private void ClosePaymentModal()
@@ -881,10 +925,9 @@
 
     private void ApplyDiscount()
     {
-        if (discountCode.Trim().Equals("CSGOLD", StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrWhiteSpace(discountCode) && discountCode.Trim().ToUpper() == "CAFE10")
         {
-            discount = subtotal * 0.15m; // 15% discount
-            DataService.AddNotification("Discount Applied", "15% off discount applied to order", "success");
+            discount = subtotal * 0.10m; // 10% discount
         }
         else
         {
@@ -892,26 +935,55 @@
         }
     }
 
-    private void ProcessPayment()
+    private async Task ProcessPayment()
     {
-        if (!cartItems.Any()) return;
-
-        // Place order in mock data service (updates inventory and registers revenue)
-        var order = DataService.PlaceOrder(cartItems, customerName, paymentMethod, discount);
-
-        // Save order receipt snap info
-        successTicketNo = order.TicketNumber;
-        successTotal = order.Total;
-        successCartSnap = new List<OrderItem>(cartItems);
-
-        // Hide checkout modal, open success animation
         showPaymentModal = false;
-        showSuccessOverlay = true;
+        successCartSnap = cartItems.Select(i => new OrderItem
+        {
+            Item = i.Item,
+            Quantity = i.Quantity,
+            Notes = i.Notes
+        }).ToList();
+        successTotal = total;
 
-        // Empty current cart
-        ClearCart();
+        // 1. Submit Order to Backend REST API & SignalR Hub
+        try
+        {
+            var itemPayload = cartItems.Select(i => new
+            {
+                ProductId = i.Item.Id,
+                Quantity = i.Quantity,
+                SpecialInstructions = i.Notes
+            }).Cast<object>().ToList();
+
+            var createdOrder = await ApiService.CreateOrderAsync(
+                customerName: string.IsNullOrWhiteSpace(customerName) ? "Walk-in Guest" : customerName,
+                orderType: 0, // DineIn
+                items: itemPayload
+            );
+
+            if (createdOrder != null)
+            {
+                successTicketNo = createdOrder.OrderNumber;
+            }
+        }
+        catch
+        {
+            // Proceed to local state fallback
+        }
+
+        // 2. Place Order in local DataService state for instant client-side updates
+        var placedOrder = DataService.PlaceOrder(cartItems, customerName, paymentMethod, discount);
+        if (string.IsNullOrEmpty(successTicketNo))
+        {
+            successTicketNo = placedOrder.TicketNumber;
+        }
+
+        showSuccessOverlay = true;
+        cartItems.Clear();
         customerName = string.Empty;
         discountCode = string.Empty;
+        discount = 0m;
     }
 
     private void CloseSuccessOverlay()

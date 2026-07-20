@@ -413,17 +413,19 @@
 </style>
 
 @code {
-    private List<ActivityItem> recentActivities = new();
+    @inject ApiService ApiService
 
-    // Data mappings
-    private decimal todaySales => DataService.Orders
+    private List<ActivityItem> recentActivities = new();
+    private ApiDashboardMetrics? apiMetrics;
+
+    private decimal todaySales => apiMetrics?.TodayRevenue ?? DataService.Orders
         .Where(o => o.CreatedAt.Date == DateTime.Today && o.Status == OrderStatus.Completed)
         .Sum(o => o.Total);
 
-    private int activeOrderCount => DataService.Orders
+    private int activeOrderCount => apiMetrics?.PendingKitchenOrdersCount ?? DataService.Orders
         .Count(o => o.Status != OrderStatus.Completed && o.Status != OrderStatus.Cancelled);
 
-    private int seatedTables => DataService.Reservations
+    private int seatedTables => apiMetrics?.ActiveTablesCount ?? DataService.Reservations
         .Count(r => r.Status == ReservationStatus.Seated);
 
     private int confirmedReservationsCount => DataService.Reservations
@@ -432,14 +434,25 @@
     private int lowStockCount => DataService.Inventory
         .Count(i => i.StockLevel <= i.ReorderPoint) + DataService.MenuItems.Count(m => m.StockCount <= 5);
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         DataService.OnChange += RefreshState;
+        await LoadDashboardMetricsAsync();
         PopulateActivities();
     }
 
-    private void RefreshState()
+    private async Task LoadDashboardMetricsAsync()
     {
+        var metrics = await ApiService.GetDashboardMetricsAsync();
+        if (metrics != null)
+        {
+            apiMetrics = metrics;
+        }
+    }
+
+    private async void RefreshState()
+    {
+        await LoadDashboardMetricsAsync();
         PopulateActivities();
         StateHasChanged();
     }
@@ -448,7 +461,6 @@
     {
         recentActivities.Clear();
 
-        // Populate activities based on mock state
         foreach (var order in DataService.Orders.OrderByDescending(o => o.CreatedAt).Take(3))
         {
             recentActivities.Add(new ActivityItem
@@ -503,6 +515,7 @@
         public string Title { get; set; } = string.Empty;
         public string Description { get; set; } = string.Empty;
         public string Time { get; set; } = string.Empty;
-        public string Type { get; set; } = "order"; // order, staff, stock, res
+        public string Type { get; set; } = "order";
     }
 }
+

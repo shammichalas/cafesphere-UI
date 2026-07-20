@@ -1,7 +1,9 @@
 @page "/kitchen"
+@using Microsoft.AspNetCore.SignalR.Client
 @inject MockDataService DataService
+@inject ApiService ApiService
 @inject IJSRuntime JS
-@implements IDisposable
+@implements IAsyncDisposable
 
 <PageTitle>Kitchen Display System — CafeSphere</PageTitle>
 
@@ -9,7 +11,7 @@
     <!-- KDS Header metrics -->
     <div class="kds-header glass-card">
         <div class="kds-header-title">
-            <span class="small-label font-semibold text-secondary">Back-of-House Terminal</span>
+            <span class="small-label font-semibold text-secondary">Back-of-House Terminal (Live WebSockets)</span>
             <h2>Kitchen Display System (KDS)</h2>
         </div>
         <div class="kds-metrics">
@@ -37,19 +39,19 @@
             <div class="empty-kds animate-fade-in">
                 <i data-lucide="cup-soda" class="empty-icon"></i>
                 <h3>All tickets clear</h3>
-                <p>No active kitchen tickets. New orders placed from the POS will show up here instantly.</p>
+                <p>No active kitchen tickets. New orders placed from the POS will show up here instantly via WebSockets.</p>
             </div>
         }
         else
         {
             @foreach (var order in ActiveOrders)
             {
-                <div class="kds-ticket glass-card @order.Status.ToString().ToLower() animate-blur-in">
+                <div class="kds-ticket glass-card @GetStatusClass(order.Status) animate-blur-in">
                     <!-- Ticket Header -->
                     <div class="ticket-header">
                         <div class="ticket-no">
                             <span>Ticket</span>
-                            <span class="num font-semibold">#@order.TicketNumber</span>
+                            <span class="num font-semibold">#@order.OrderNumber</span>
                         </div>
                         <div class="ticket-timer font-semibold @(GetTimeSpan(order.CreatedAt).TotalMinutes >= 15 ? "late" : "")">
                             <i data-lucide="clock"></i>
@@ -60,21 +62,21 @@
                     <!-- Ticket Details -->
                     <div class="ticket-details">
                         <span class="cust-name font-semibold">@order.CustomerName</span>
-                        <span class="order-id">@order.Id • @order.PaymentMethod</span>
+                        <span class="order-id">@order.Id • @order.TableNumber</span>
                     </div>
 
                     <!-- Ticket Items List -->
                     <div class="ticket-items">
                         @foreach (var item in order.Items)
                         {
-                            <div class="ticket-item @item.Status.ToString().ToLower()">
+                            <div class="ticket-item">
                                 <div class="item-main">
                                     <span class="qty font-semibold">@item.Quantity x</span>
-                                    <span class="name">@item.Item.Name</span>
+                                    <span class="name">@item.ProductName</span>
                                 </div>
-                                @if (!string.IsNullOrEmpty(item.Notes))
+                                @if (!string.IsNullOrEmpty(item.SpecialInstructions))
                                 {
-                                    <span class="notes"><i data-lucide="info"></i> <i>@item.Notes</i></span>
+                                    <span class="notes"><i data-lucide="info"></i> <i>@item.SpecialInstructions</i></span>
                                 }
                             </div>
                         }
@@ -82,23 +84,23 @@
 
                     <!-- Ticket Action footer -->
                     <div class="ticket-footer">
-                        @if (order.Status == OrderStatus.Pending)
+                        @if (order.Status == 0)
                         {
-                            <button class="btn-pill btn-primary btn-ticket-action" @onclick="() => BumpTicket(order)">
+                            <button class="btn-pill btn-primary btn-ticket-action" @onclick="() => BumpTicket(order, 1)">
                                 <i data-lucide="play"></i>
                                 <span>Start Preparing</span>
                             </button>
                         }
-                        else if (order.Status == OrderStatus.Preparing)
+                        else if (order.Status == 1)
                         {
-                            <button class="btn-pill btn-secondary btn-ticket-action" @onclick="() => BumpTicket(order)">
+                            <button class="btn-pill btn-secondary btn-ticket-action" @onclick="() => BumpTicket(order, 2)">
                                 <i data-lucide="check"></i>
                                 <span>Mark Ready</span>
                             </button>
                         }
-                        else if (order.Status == OrderStatus.Ready)
+                        else if (order.Status == 2)
                         {
-                            <button class="btn-pill btn-success btn-ticket-action" @onclick="() => BumpTicket(order)">
+                            <button class="btn-pill btn-success btn-ticket-action" @onclick="() => BumpTicket(order, 3)">
                                 <i data-lucide="check-check"></i>
                                 <span>Complete Order</span>
                             </button>
@@ -111,14 +113,12 @@
 </div>
 
 <style>
-    /* KDS Board Scoped styling */
     .kds-layout {
         display: flex;
         flex-direction: column;
         gap: var(--space-md);
         height: calc(100vh - 120px);
     }
-
     .kds-header {
         display: flex;
         justify-content: space-between;
@@ -126,39 +126,33 @@
         padding: var(--space-sm) var(--space-md);
         flex-shrink: 0;
     }
-
     .kds-metrics {
         display: flex;
         align-items: center;
         gap: var(--space-md);
     }
-
     .kds-metric {
         display: flex;
         flex-direction: column;
         align-items: center;
         min-width: 60px;
     }
-
     .m-val {
         font-family: var(--font-display);
         font-size: 24px;
         font-weight: 800;
     }
-
     .m-lbl {
         font-size: 11px;
         color: var(--color-text-muted);
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
-
     .kds-divider {
         width: 1px;
         height: 28px;
         background: var(--color-border);
     }
-
     .kds-grid {
         flex: 1;
         overflow-x: auto;
@@ -168,7 +162,6 @@
         padding-bottom: var(--space-sm);
         align-items: flex-start;
     }
-
     .empty-kds {
         display: flex;
         flex-direction: column;
@@ -179,14 +172,11 @@
         gap: var(--space-sm);
         text-align: center;
     }
-
     .empty-icon {
         width: 64px;
         height: 64px;
         color: rgba(23, 61, 51, 0.08);
     }
-
-    /* KDS Ticket card */
     .kds-ticket {
         width: 290px;
         max-height: 100%;
@@ -197,7 +187,6 @@
         border-radius: 20px;
         gap: var(--space-sm);
     }
-
     .kds-ticket.pending { border-top: 6px solid var(--color-primary); }
     .kds-ticket.preparing { border-top: 6px solid var(--color-warning); }
     .kds-ticket.ready { border-top: 6px solid var(--color-success); }
@@ -209,19 +198,16 @@
         border-bottom: 1px solid var(--color-border-light);
         padding-bottom: var(--space-xs);
     }
-
     .ticket-no span {
         font-size: 11px;
         color: var(--color-text-muted);
         display: block;
     }
-
     .ticket-no .num {
         font-size: 20px;
         color: var(--color-primary);
         font-family: var(--font-display);
     }
-
     .ticket-timer {
         display: flex;
         align-items: center;
@@ -230,37 +216,30 @@
         font-size: 13px;
         color: var(--color-text-secondary);
     }
-
     .ticket-timer.late {
         color: var(--color-danger);
         animation: blink 1s ease infinite;
     }
-
     @@keyframes blink {
         50% { opacity: 0.5; }
     }
-
     .ticket-timer i {
         width: 14px;
         height: 14px;
     }
-
     .ticket-details {
         display: flex;
         flex-direction: column;
         gap: 2px;
     }
-
     .cust-name {
         font-size: 14px;
         color: var(--color-text);
     }
-
     .order-id {
         font-size: 11px;
         color: var(--color-text-muted);
     }
-
     .ticket-items {
         display: flex;
         flex-direction: column;
@@ -269,7 +248,6 @@
         overflow-y: auto;
         padding-right: 4px;
     }
-
     .ticket-item {
         display: flex;
         flex-direction: column;
@@ -278,27 +256,18 @@
         background: rgba(0,0,0,0.01);
         border-radius: 8px;
     }
-
     .item-main {
         display: flex;
         gap: 6px;
         font-size: 13px;
     }
-
     .ticket-item .qty {
         color: var(--color-primary);
         font-size: 13px;
     }
-
     .ticket-item .name {
         color: var(--color-text);
     }
-
-    .ticket-item.completed {
-        opacity: 0.5;
-        text-decoration: line-through;
-    }
-
     .ticket-item .notes {
         display: flex;
         align-items: center;
@@ -307,18 +276,15 @@
         color: var(--color-danger);
         padding-left: 20px;
     }
-
     .ticket-item .notes i {
         width: 10px;
         height: 10px;
     }
-
     .ticket-footer {
         border-top: 1px solid var(--color-border-light);
         padding-top: var(--space-xs);
         flex-shrink: 0;
     }
-
     .btn-ticket-action {
         width: 100%;
         font-size: 12px;
@@ -328,26 +294,97 @@
 </style>
 
 @code {
+    private List<ApiOrder> orders = new();
+    private Microsoft.AspNetCore.SignalR.Client.HubConnection? hubConnection;
     private System.Threading.Timer? tickerTimer;
 
-    // Computed states
-    private int pendingCount => DataService.Orders.Count(o => o.Status == OrderStatus.Pending);
-    private int preparingCount => DataService.Orders.Count(o => o.Status == OrderStatus.Preparing);
-    private int readyCount => DataService.Orders.Count(o => o.Status == OrderStatus.Ready);
+    private int pendingCount => orders.Count(o => o.Status == 0);
+    private int preparingCount => orders.Count(o => o.Status == 1);
+    private int readyCount => orders.Count(o => o.Status == 2);
 
-    private IEnumerable<Order> ActiveOrders => DataService.Orders
-        .Where(o => o.Status != OrderStatus.Completed && o.Status != OrderStatus.Cancelled)
+    private IEnumerable<ApiOrder> ActiveOrders => orders
+        .Where(o => o.Status != 3 && o.Status != 4)
         .OrderBy(o => o.CreatedAt);
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
-        DataService.OnChange += StateHasChanged;
+        await LoadQueueAsync();
 
-        // Ticking loop to increment clock values in UI every second
+        // Connect live to SignalR KitchenHub
+        try
+        {
+            hubConnection = ApiService.CreateHubConnection("/hubs/kitchen");
+            hubConnection.On("OrderReceived", async () =>
+            {
+                await LoadQueueAsync();
+                await InvokeAsync(StateHasChanged);
+            });
+
+            hubConnection.On("OrderStatusChanged", async () =>
+            {
+                await LoadQueueAsync();
+                await InvokeAsync(StateHasChanged);
+            });
+
+            await hubConnection.StartAsync();
+        }
+        catch
+        {
+            // SignalR offline fallback
+        }
+
         tickerTimer = new System.Threading.Timer(_ =>
         {
             InvokeAsync(StateHasChanged);
         }, null, 0, 1000);
+    }
+
+    private async Task LoadQueueAsync()
+    {
+        var fetched = await ApiService.GetKitchenQueueAsync();
+        if (fetched != null && fetched.Any())
+        {
+            orders = fetched;
+        }
+        else
+        {
+            // Fallback sync from DataService
+            orders = DataService.Orders.Select(o => new ApiOrder
+            {
+                Id = o.Id,
+                OrderNumber = o.TicketNumber,
+                CustomerName = o.CustomerName,
+                Status = (int)o.Status,
+                CreatedAt = o.CreatedAt,
+                Items = o.Items.Select(i => new ApiOrderItem { ProductName = i.Item.Name, Quantity = i.Quantity, SpecialInstructions = i.Notes }).ToList()
+            }).ToList();
+        }
+    }
+
+    private async Task BumpTicket(ApiOrder order, int nextStatus)
+    {
+        order.Status = nextStatus;
+        await ApiService.UpdateKitchenStatusAsync(order.Id, nextStatus);
+        
+        // Also update local mock data for seamless responsiveness
+        DataService.BumpKitchenTicket(order.Id);
+        await LoadQueueAsync();
+    }
+
+    private string GetStatusClass(int status) => status switch
+    {
+        0 => "pending",
+        1 => "preparing",
+        2 => "ready",
+        _ => "completed"
+    };
+
+    private TimeSpan GetTimeSpan(DateTime origin) => DateTime.UtcNow - origin;
+
+    private string FormatTimeSpan(TimeSpan ts)
+    {
+        if (ts.TotalHours >= 1) return $"{(int)ts.TotalHours}h {ts.Minutes:D2}m";
+        return $"{ts.Minutes:D2}:{ts.Seconds:D2}";
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -355,28 +392,12 @@
         await JS.InvokeVoidAsync("initializeLucide");
     }
 
-    private void BumpTicket(Order order)
+    public async ValueTask DisposeAsync()
     {
-        DataService.BumpKitchenTicket(order.Id);
-    }
-
-    private TimeSpan GetTimeSpan(DateTime origin)
-    {
-        return DateTime.Now - origin;
-    }
-
-    private string FormatTimeSpan(TimeSpan ts)
-    {
-        if (ts.TotalHours >= 1)
-        {
-            return $"{(int)ts.TotalHours}h {ts.Minutes:D2}m";
-        }
-        return $"{ts.Minutes:D2}:{ts.Seconds:D2}";
-    }
-
-    public void Dispose()
-    {
-        DataService.OnChange -= StateHasChanged;
         tickerTimer?.Dispose();
+        if (hubConnection != null)
+        {
+            await hubConnection.DisposeAsync();
+        }
     }
 }

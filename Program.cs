@@ -16,5 +16,6 @@ builder.Services.AddScoped(sp => new HttpClient
 
 builder.Services.AddSingleton<MockDataService>();
 builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<ApiService>();
 
 await builder.Build().RunAsync();
