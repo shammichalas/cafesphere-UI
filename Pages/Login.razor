@@ -1,81 +1,204 @@
 @page "/login"
 @inject UI.Services.AuthService AuthService
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 
-<div class="auth-page-container">
-    <div class="auth-card glass-panel">
-        <div class="auth-header text-center">
-            <div class="brand-logo mb-3">
-                <i class="bi bi-cup-hot-fill text-accent fs-1"></i>
+<PageTitle>Portal Authentication — CafeSphere</PageTitle>
+
+<div class="auth-layout animate-slide-up">
+    <div class="glass-card auth-card animate-blur-in">
+        <div class="auth-header">
+            <div class="brand-badge">
+                <i data-lucide="cup-soda" class="brand-icon"></i>
             </div>
-            <h2 class="auth-title">Welcome to CafeSphere</h2>
-            <p class="auth-subtitle text-muted">Enterprise Cafe Management Platform</p>
+            <h2>Sign in to CafeSphere</h2>
+            <p class="body-text">Enterprise Cafe Management Platform</p>
         </div>
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-danger fade show d-flex align-items-center mb-4" role="alert">
-                <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
-                <div>@errorMessage</div>
+            <div class="badge-pill badge-danger auth-alert">
+                <i data-lucide="alert-circle"></i>
+                <span>@errorMessage</span>
             </div>
         }
 
         @if (!string.IsNullOrEmpty(successMessage))
         {
-            <div class="alert alert-success fade show d-flex align-items-center mb-4" role="alert">
-                <i class="bi bi-check-circle-fill me-2 fs-5"></i>
-                <div>@successMessage</div>
+            <div class="badge-pill badge-success auth-alert">
+                <i data-lucide="check-circle"></i>
+                <span>@successMessage</span>
             </div>
         }
 
-        <form @onsubmit="HandleLogin">
-            <div class="form-group mb-3">
-                <label class="form-label text-light">Email or Username</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-envelope"></i></span>
-                    <input type="text" class="form-control bg-dark text-light border-secondary" placeholder="admin@cafesphere.com" @bind="emailOrUsername" required />
-                </div>
+        <form @onsubmit="HandleLogin" class="auth-form">
+            <div class="input-group-glass">
+                <input id="email-username" type="text" class="input-glass" placeholder="admin@cafesphere.com" @bind="emailOrUsername" required />
+                <label for="email-username">Email Address or Username</label>
             </div>
 
-            <div class="form-group mb-4">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                    <label class="form-label text-light mb-0">Password</label>
-                    <a href="javascript:void(0)" class="text-accent text-decoration-none small">Forgot Password?</a>
-                </div>
-                <div class="input-group">
-                    <span class="input-group-text bg-dark border-secondary text-muted"><i class="bi bi-lock"></i></span>
-                    <input type="password" class="form-control bg-dark text-light border-secondary" placeholder="••••••••" @bind="password" required />
-                </div>
+            <div class="input-group-glass">
+                <input id="password-input" type="password" class="input-glass" placeholder="••••••••" @bind="password" required />
+                <label for="password-input">Password</label>
             </div>
 
-            <button type="submit" class="btn btn-primary w-100 py-2 font-weight-bold shadow-lg text-uppercase" disabled="@isLoading">
+            <button type="submit" class="btn-pill btn-primary auth-btn" disabled="@isLoading">
                 @if (isLoading)
                 {
-                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <i data-lucide="loader-2" class="spin"></i>
                     <span>Authenticating...</span>
                 }
                 else
                 {
-                    <span>Sign In to Portal</span>
+                    <i data-lucide="log-in"></i>
+                    <span>Sign In to Terminal</span>
                 }
             </button>
         </form>
 
-        <div class="demo-credentials mt-4 pt-3 border-top border-secondary text-center">
-            <p class="text-muted small mb-2">Quick Demo Fill:</p>
-            <div class="d-flex justify-content-center gap-2">
-                <button type="button" class="btn btn-sm btn-outline-info" @onclick='() => FillDemo("admin@cafesphere.com", "Admin@123")'>Admin</button>
-                <button type="button" class="btn btn-sm btn-outline-warning" @onclick='() => FillDemo("cashier@cafesphere.com", "Cashier@123")'>Cashier</button>
-                <button type="button" class="btn btn-sm btn-outline-success" @onclick='() => FillDemo("kitchen@cafesphere.com", "Kitchen@123")'>Kitchen</button>
+        <!-- Quick Demo Profiles -->
+        <div class="demo-profiles-section">
+            <span class="small-label demo-label">Quick Demo Access</span>
+            <div class="demo-buttons-grid">
+                <button type="button" class="btn-pill btn-glass demo-btn" @onclick='() => FillDemo("admin@cafesphere.com", "Admin@123")'>
+                    <i data-lucide="shield"></i>
+                    <span>Manager</span>
+                </button>
+                <button type="button" class="btn-pill btn-glass demo-btn" @onclick='() => FillDemo("cashier@cafesphere.com", "Cashier@123")'>
+                    <i data-lucide="receipt"></i>
+                    <span>Cashier</span>
+                </button>
+                <button type="button" class="btn-pill btn-glass demo-btn" @onclick='() => FillDemo("kitchen@cafesphere.com", "Kitchen@123")'>
+                    <i data-lucide="utensils"></i>
+                    <span>Kitchen</span>
+                </button>
             </div>
         </div>
 
-        <div class="auth-footer text-center mt-4">
-            <span class="text-muted">Don't have an account? </span>
-            <a href="/register" class="text-accent font-weight-bold text-decoration-none">Create Account</a>
+        <div class="auth-footer">
+            <span class="caption">Don't have an enterprise account?</span>
+            <a href="/register" class="auth-link font-semibold">Create Account</a>
         </div>
     </div>
 </div>
+
+<style>
+    .auth-layout {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(100vh - 120px);
+        padding: var(--space-md);
+    }
+
+    .auth-card {
+        max-width: 440px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+        padding: var(--space-xl) var(--space-md);
+        border-radius: var(--radius-dialog);
+    }
+
+    .auth-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 6px;
+    }
+
+    .brand-badge {
+        width: 60px;
+        height: 60px;
+        border-radius: 20px;
+        background: rgba(23, 61, 51, 0.08);
+        border: 1px solid rgba(23, 61, 51, 0.15);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-primary);
+        margin-bottom: 8px;
+    }
+
+    .brand-icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    .auth-alert {
+        width: 100%;
+        padding: 10px 14px;
+        justify-content: center;
+        font-size: 13px;
+    }
+
+    .auth-form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+    }
+
+    .auth-btn {
+        width: 100%;
+        height: 48px;
+        font-size: 15px;
+        font-weight: 600;
+        margin-top: 8px;
+    }
+
+    .demo-profiles-section {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        border-top: 1px solid var(--color-border-light);
+        padding-top: var(--space-sm);
+    }
+
+    .demo-label {
+        color: var(--color-text-muted);
+        text-align: center;
+    }
+
+    .demo-buttons-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+
+    .demo-btn {
+        padding: 8px var(--space-xs);
+        font-size: 12px;
+        box-shadow: none;
+    }
+
+    .auth-footer {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        font-size: 13px;
+        border-top: 1px solid var(--color-border-light);
+        padding-top: var(--space-sm);
+    }
+
+    .auth-link {
+        color: var(--color-primary);
+        text-decoration: none;
+    }
+
+    .auth-link:hover {
+        text-decoration: underline;
+    }
+
+    .spin {
+        animation: spin 1s linear infinite;
+    }
+
+    @@keyframes spin {
+        100% { transform: rotate(360deg); }
+    }
+</style>
 
 @code {
     private string emailOrUsername = "admin@cafesphere.com";
@@ -91,6 +214,11 @@
         {
             Navigation.NavigateTo("/");
         }
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JS.InvokeVoidAsync("initializeLucide");
     }
 
     private void FillDemo(string email, string pwd)
@@ -110,8 +238,8 @@
 
         if (result.Success)
         {
-            successMessage = "Authentication successful! Redirecting to Dashboard...";
-            await Task.Delay(1000);
+            successMessage = "Authenticated! Redirecting...";
+            await Task.Delay(800);
             Navigation.NavigateTo("/");
         }
         else

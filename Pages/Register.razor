@@ -1,78 +1,175 @@
 @page "/register"
 @inject UI.Services.AuthService AuthService
 @inject NavigationManager Navigation
+@inject IJSRuntime JS
 
-<div class="auth-page-container">
-    <div class="auth-card glass-panel">
-        <div class="auth-header text-center">
-            <div class="brand-logo mb-3">
-                <i class="bi bi-cup-hot-fill text-accent fs-1"></i>
+<PageTitle>Portal Registration — CafeSphere</PageTitle>
+
+<div class="auth-layout animate-slide-up">
+    <div class="glass-card auth-card animate-blur-in">
+        <div class="auth-header">
+            <div class="brand-badge">
+                <i data-lucide="user-plus" class="brand-icon"></i>
             </div>
-            <h2 class="auth-title">Join CafeSphere</h2>
-            <p class="auth-subtitle text-muted">Create your Enterprise Account</p>
+            <h2>Join CafeSphere</h2>
+            <p class="body-text">Create your Enterprise Management Account</p>
         </div>
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-danger fade show d-flex align-items-center mb-4" role="alert">
-                <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
-                <div>@errorMessage</div>
+            <div class="badge-pill badge-danger auth-alert">
+                <i data-lucide="alert-circle"></i>
+                <span>@errorMessage</span>
             </div>
         }
 
         @if (!string.IsNullOrEmpty(successMessage))
         {
-            <div class="alert alert-success fade show d-flex align-items-center mb-4" role="alert">
-                <i class="bi bi-check-circle-fill me-2 fs-5"></i>
-                <div>@successMessage</div>
+            <div class="badge-pill badge-success auth-alert">
+                <i data-lucide="check-circle"></i>
+                <span>@successMessage</span>
             </div>
         }
 
-        <form @onsubmit="HandleRegister">
-            <div class="form-group mb-3">
-                <label class="form-label text-light">Full Name</label>
-                <input type="text" class="form-control bg-dark text-light border-secondary" placeholder="Jane Doe" @bind="fullName" required />
+        <form @onsubmit="HandleRegister" class="auth-form">
+            <div class="input-group-glass">
+                <input id="fullname-input" type="text" class="input-glass" placeholder="Jane Doe" @bind="fullName" required />
+                <label for="fullname-input">Full Name</label>
             </div>
 
-            <div class="form-group mb-3">
-                <label class="form-label text-light">Username</label>
-                <input type="text" class="form-control bg-dark text-light border-secondary" placeholder="janedoe" @bind="username" required />
+            <div class="input-group-glass">
+                <input id="username-input" type="text" class="input-glass" placeholder="janedoe" @bind="username" required />
+                <label for="username-input">Username</label>
             </div>
 
-            <div class="form-group mb-3">
-                <label class="form-label text-light">Email Address</label>
-                <input type="email" class="form-control bg-dark text-light border-secondary" placeholder="jane@example.com" @bind="email" required />
+            <div class="input-group-glass">
+                <input id="email-input" type="email" class="input-glass" placeholder="jane@example.com" @bind="email" required />
+                <label for="email-input">Email Address</label>
             </div>
 
-            <div class="form-group mb-3">
-                <label class="form-label text-light">Phone Number</label>
-                <input type="tel" class="form-control bg-dark text-light border-secondary" placeholder="+1234567890" @bind="phoneNumber" />
+            <div class="input-group-glass">
+                <input id="phone-input" type="tel" class="input-glass" placeholder="+1234567890" @bind="phoneNumber" />
+                <label for="phone-input">Phone Number (Optional)</label>
             </div>
 
-            <div class="form-group mb-4">
-                <label class="form-label text-light">Password</label>
-                <input type="password" class="form-control bg-dark text-light border-secondary" placeholder="Minimum 6 characters" @bind="password" required />
+            <div class="input-group-glass">
+                <input id="password-reg" type="password" class="input-glass" placeholder="••••••••" @bind="password" required />
+                <label for="password-reg">Password</label>
             </div>
 
-            <button type="submit" class="btn btn-primary w-100 py-2 font-weight-bold shadow-lg text-uppercase" disabled="@isLoading">
+            <button type="submit" class="btn-pill btn-primary auth-btn" disabled="@isLoading">
                 @if (isLoading)
                 {
-                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <i data-lucide="loader-2" class="spin"></i>
                     <span>Creating Account...</span>
                 }
                 else
                 {
+                    <i data-lucide="arrow-right"></i>
                     <span>Complete Registration</span>
                 }
             </button>
         </form>
 
-        <div class="auth-footer text-center mt-4">
-            <span class="text-muted">Already have an account? </span>
-            <a href="/login" class="text-accent font-weight-bold text-decoration-none">Sign In</a>
+        <div class="auth-footer">
+            <span class="caption">Already have an account?</span>
+            <a href="/login" class="auth-link font-semibold">Sign In</a>
         </div>
     </div>
 </div>
+
+<style>
+    .auth-layout {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: calc(100vh - 120px);
+        padding: var(--space-md);
+    }
+
+    .auth-card {
+        max-width: 460px;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-md);
+        padding: var(--space-xl) var(--space-md);
+        border-radius: var(--radius-dialog);
+    }
+
+    .auth-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+        gap: 6px;
+    }
+
+    .brand-badge {
+        width: 60px;
+        height: 60px;
+        border-radius: 20px;
+        background: rgba(23, 61, 51, 0.08);
+        border: 1px solid rgba(23, 61, 51, 0.15);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--color-primary);
+        margin-bottom: 8px;
+    }
+
+    .brand-icon {
+        width: 32px;
+        height: 32px;
+    }
+
+    .auth-alert {
+        width: 100%;
+        padding: 10px 14px;
+        justify-content: center;
+        font-size: 13px;
+    }
+
+    .auth-form {
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-xs);
+    }
+
+    .auth-btn {
+        width: 100%;
+        height: 48px;
+        font-size: 15px;
+        font-weight: 600;
+        margin-top: 8px;
+    }
+
+    .auth-footer {
+        display: flex;
+        justify-content: center;
+        gap: 6px;
+        font-size: 13px;
+        border-top: 1px solid var(--color-border-light);
+        padding-top: var(--space-sm);
+    }
+
+    .auth-link {
+        color: var(--color-primary);
+        text-decoration: none;
+    }
+
+    .auth-link:hover {
+        text-decoration: underline;
+    }
+
+    .spin {
+        animation: spin 1s linear infinite;
+    }
+
+    @@keyframes spin {
+        100% { transform: rotate(360deg); }
+    }
+</style>
 
 @code {
     private string fullName = "";
@@ -83,6 +180,11 @@
     private bool isLoading = false;
     private string? errorMessage;
     private string? successMessage;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        await JS.InvokeVoidAsync("initializeLucide");
+    }
 
     private async Task HandleRegister()
     {
@@ -95,8 +197,8 @@
 
         if (result.Success)
         {
-            successMessage = "Account registered successfully! Redirecting...";
-            await Task.Delay(1000);
+            successMessage = "Account created successfully! Redirecting...";
+            await Task.Delay(800);
             Navigation.NavigateTo("/");
         }
         else
