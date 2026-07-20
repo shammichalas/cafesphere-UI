@@ -1,22 +1,31 @@
 @page "/pos"
 @attribute [Authorize(Roles = "SuperAdmin,Admin,Manager,Cashier,Customer")]
 @inject MockDataService DataService
+@inject UI.Services.AuthService AuthService
 @inject IJSRuntime JS
 @implements IDisposable
 
-<PageTitle>Point of Sale — CafeSphere</PageTitle>
+<PageTitle>Order Menu & Point of Sale — CafeSphere</PageTitle>
 
 <div class="pos-layout animate-slide-up">
     <!-- Left Area: Menu Grid -->
     <div class="pos-menu-section">
         <!-- TOP POS Header & Category Tabs -->
-        <div class="pos-header">
-            <div class="header-search">
+        <div class="pos-header d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="header-search flex-grow-1">
                 <i data-lucide="search" class="search-icon"></i>
                 <input @bind="searchQuery" @bind:event="oninput" type="text" placeholder="Search menu items (espresso, croissant...)" class="pos-search-input" />
             </div>
+
+            @if (AuthService.CurrentUser != null && AuthService.CurrentUser.Role != "Customer")
+            {
+                <button type="button" class="btn-pill btn-primary py-2 px-3 ms-2" @onclick="() => isAddDishModalOpen = true">
+                    <i data-lucide="plus-circle" class="me-1"></i>
+                    <span>+ Add New Dish</span>
+                </button>
+            }
             
-            <div class="category-tabs">
+            <div class="category-tabs w-100">
                 @foreach (var cat in categories)
                 {
                     <button class="category-tab @(selectedCategory == cat ? "active" : "")" @onclick="() => SetCategory(cat)">
@@ -774,9 +783,13 @@
     }
 </style>
 
+<!-- Add Dish Modal for Staff -->
+<UI.Components.AddDishModal IsVisible="@isAddDishModalOpen" OnClose="() => isAddDishModalOpen = false" />
+
 @code {
     @inject ApiService ApiService
 
+    private bool isAddDishModalOpen = false;
     private string searchQuery = string.Empty;
     private string selectedCategory = "All";
     private List<string> categories = new() { "All", "Coffee", "Bakery", "Dessert" };

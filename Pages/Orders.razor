@@ -1,6 +1,7 @@
 @page "/orders"
 @attribute [Authorize]
 @inject MockDataService DataService
+@inject UI.Services.AuthService AuthService
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -348,6 +349,17 @@
         get
         {
             var query = DataService.Orders.AsEnumerable();
+
+            // Customer Role Data Ownership Isolation
+            if (AuthService.CurrentUser != null && AuthService.CurrentUser.Role == "Customer")
+            {
+                var curUser = AuthService.CurrentUser;
+                query = query.Where(o => 
+                    string.Equals(o.CustomerName, curUser.FullName, StringComparison.OrdinalIgnoreCase) ||
+                    string.Equals(o.CustomerName, curUser.Username, StringComparison.OrdinalIgnoreCase) ||
+                    (!string.IsNullOrEmpty(curUser.UserId) && o.Id.Contains(curUser.UserId))
+                );
+            }
 
             // Status filter
             if (selectedStatus != "All")

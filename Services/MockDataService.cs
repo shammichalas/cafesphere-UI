@@ -24,6 +24,17 @@ namespace UI.Services
 
         private void NotifyStateChanged() => OnChange?.Invoke();
 
+        public void AddMenuItem(MenuItem item)
+        {
+            if (string.IsNullOrEmpty(item.Id))
+            {
+                item.Id = $"m{MenuItems.Count + 1}";
+            }
+            MenuItems.Insert(0, item);
+            AddNotification("New Dish Published", $"'{item.Name}' is now live on the Customer Order Menu!", "success");
+            NotifyStateChanged();
+        }
+
         private void InitializeMockData()
         {
             // 1. Menu Items

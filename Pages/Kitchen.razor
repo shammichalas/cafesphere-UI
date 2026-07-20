@@ -15,7 +15,11 @@
             <span class="small-label font-semibold text-secondary">Back-of-House Terminal (Live WebSockets)</span>
             <h2>Kitchen Display System (KDS)</h2>
         </div>
-        <div class="kds-metrics">
+        <div class="kds-metrics align-items-center">
+            <button type="button" class="btn-pill btn-primary me-2" @onclick="() => isAddDishModalOpen = true">
+                <i data-lucide="plus-circle"></i>
+                <span>Add New Dish</span>
+            </button>
             <div class="kds-metric">
                 <span class="m-val text-danger">@pendingCount</span>
                 <span class="m-lbl">Queue</span>
@@ -294,7 +298,11 @@
     }
 </style>
 
+<!-- Add Dish Modal for Kitchen Staff & Admins -->
+<UI.Components.AddDishModal IsVisible="@isAddDishModalOpen" OnClose="() => isAddDishModalOpen = false" />
+
 @code {
+    private bool isAddDishModalOpen = false;
     private List<ApiOrder> orders = new();
     private Microsoft.AspNetCore.SignalR.Client.HubConnection? hubConnection;
     private System.Threading.Timer? tickerTimer;
