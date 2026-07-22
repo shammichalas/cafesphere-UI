@@ -8,12 +8,13 @@ The interface is handcrafted to follow high-end design aesthetics inspired by **
 
 ## ✨ Features & Interactive Modules
 
-The application runs on a shared, in-memory C# singleton state manager (`MockDataService`), making all views fully interactive:
+The application integrates real-time **ASP.NET Core SignalR WebSockets** and fallback memory state brokers, syncing all actions instantly to a persistent MongoDB database:
 
-*   **📊 Hub Dashboard (`Home.razor`)**: Displays key metrics (Today's Revenue, Active Tickets, Table Map status, safety stock warnings) and custom-rendered SVG hourly sales line charts.
-*   **🛒 Point of Sale (`Pos.razor`)**: Square-like category selector tabs, product search indexes, live cart item lists, tax/discount calculators, and checkout checkout success receipt animations.
-*   **🧑‍🍳 Kitchen Display System (`Kitchen.razor`)**: Back-of-house ticket grid equipped with elapsed recipe cooking timers ticking in real time, custom coffee barista notes, and status bumping triggers (Prepare -> Mark Ready -> Deliver).
-*   **📅 Table Reservations (`Reservations.razor`)**: Interactive seating maps (12 tables with seating capacities from 2 to 6 covers) showing statuses (Available, Reserved, Seated) and guest booking dialog cards.
+*   **📊 Hub Dashboard (`Home.razor`)**: Displays key metrics (Today's Revenue, Active Tickets, Table Map status, safety stock warnings) and custom-rendered SVG hourly sales line charts, updating live via `DashboardHub`.
+*   **🛒 Point of Sale (`Pos.razor`)**: Square-like category selector tabs, product search indexes, live cart item lists, tax/discount calculators, and checkout checkout success receipt animations, synced with `PosHub`.
+*   **🧑‍🍳 Kitchen Display System (`Kitchen.razor`)**: Back-of-house ticket grid equipped with elapsed recipe cooking timers ticking in real time, custom coffee barista notes, and status bumping triggers, synced with `KitchenHub`.
+*   **📅 Table Reservations (`Reservations.razor`)**: Interactive seating maps (12 tables with seating capacities from 2 to 6 covers) showing statuses (Available, Reserved, Seated) and guest booking dialog cards, synced live with `ReservationsHub`.
+*   **🔔 Real-Time Floating Toasts (`MainLayout.razor`)**: Displays sliding glassmorphic popups on the viewport, playing synthetic chime sound notes natively via Web Audio API.
 *   **📦 Raw Inventory (`Inventory.razor`)**: Stock level list featuring Safety Threshold limits, critical low-stock warnings, SKU codes, and inline restock buttons.
 *   **👥 Staff Roster (`Employees.razor`)**: Attendance log displaying check-in times, weekly hours, roles, and attendance clock-in buttons.
 *   **💰 Finance Ledger (`Finance.razor`)**: Double-entry ledger list displaying all cashflows, expenses logs, and payout margin details.
