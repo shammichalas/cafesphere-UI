@@ -418,6 +418,7 @@
 
     private List<ActivityItem> recentActivities = new();
     private ApiDashboardMetrics? apiMetrics;
+    private Microsoft.AspNetCore.SignalR.Client.HubConnection? dashboardHubConn;
 
     private decimal todaySales => apiMetrics?.TodayRevenue ?? DataService.Orders
         .Where(o => o.CreatedAt.Date == DateTime.Today && o.Status == OrderStatus.Completed)
@@ -440,6 +441,36 @@
         DataService.OnChange += RefreshState;
         await LoadDashboardMetricsAsync();
         PopulateActivities();
+
+        try
+        {
+            dashboardHubConn = ApiService.CreateHubConnection("/hubs/dashboard");
+            
+            dashboardHubConn.On("MetricsUpdated", async () =>
+            {
+                await LoadDashboardMetricsAsync();
+                PopulateActivities();
+                await InvokeAsync(StateHasChanged);
+            });
+
+            dashboardHubConn.On("OrderStatusChanged", async () =>
+            {
+                await LoadDashboardMetricsAsync();
+                PopulateActivities();
+                await InvokeAsync(StateHasChanged);
+            });
+
+            await dashboardHubConn.StartAsync();
+            try
+            {
+                await dashboardHubConn.SendAsync("JoinDashboardGroup");
+            }
+            catch {}
+        }
+        catch
+        {
+            // Offline fallback
+        }
     }
 
     private async Task LoadDashboardMetricsAsync()
@@ -509,6 +540,10 @@
     public void Dispose()
     {
         DataService.OnChange -= RefreshState;
+        if (dashboardHubConn != null)
+        {
+            _ = dashboardHubConn.DisposeAsync();
+        }
     }
 
     public class ActivityItem

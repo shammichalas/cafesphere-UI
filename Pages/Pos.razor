@@ -817,6 +817,8 @@
     private decimal successTotal = 0m;
     private List<OrderItem> successCartSnap = new();
 
+    private Microsoft.AspNetCore.SignalR.Client.HubConnection? posHubConn;
+
     private IEnumerable<MenuItem> FilteredItems
     {
         get
@@ -843,6 +845,46 @@
     {
         DataService.OnChange += StateHasChanged;
 
+        await ReloadMenuAsync();
+
+        try
+        {
+            var apiCategories = await ApiService.GetCategoriesAsync();
+            if (apiCategories.Any())
+            {
+                var catNames = apiCategories.Select(c => c.Name).ToList();
+                catNames.Insert(0, "All");
+                categories = catNames;
+            }
+        }
+        catch {}
+
+        try
+        {
+            posHubConn = ApiService.CreateHubConnection("/hubs/pos");
+            posHubConn.On("OrderStatusChanged", async () =>
+            {
+                await ReloadMenuAsync();
+            });
+            posHubConn.On("PosOrderUpdated", async () =>
+            {
+                await ReloadMenuAsync();
+            });
+            await posHubConn.StartAsync();
+            try
+            {
+                await posHubConn.SendAsync("JoinPosGroup");
+            }
+            catch {}
+        }
+        catch
+        {
+            // Fallback to DataService
+        }
+    }
+
+    private async Task ReloadMenuAsync()
+    {
         try
         {
             var apiProducts = await ApiService.GetProductsAsync();
@@ -859,19 +901,9 @@
                     StockCount = 100
                 }).ToList();
             }
-
-            var apiCategories = await ApiService.GetCategoriesAsync();
-            if (apiCategories.Any())
-            {
-                var catNames = apiCategories.Select(c => c.Name).ToList();
-                catNames.Insert(0, "All");
-                categories = catNames;
-            }
         }
-        catch
-        {
-            // Fallback to DataService
-        }
+        catch {}
+        await InvokeAsync(StateHasChanged);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -1015,5 +1047,9 @@
     public void Dispose()
     {
         DataService.OnChange -= StateHasChanged;
+        if (posHubConn != null)
+        {
+            _ = posHubConn.DisposeAsync();
+        }
     }
 }

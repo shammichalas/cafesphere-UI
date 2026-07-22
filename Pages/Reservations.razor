@@ -1,6 +1,7 @@
 @page "/reservations"
 @attribute [Authorize]
 @inject MockDataService DataService
+@inject UI.Services.ApiService ApiService
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -459,14 +460,102 @@
     private int newResCovers = 2;
     private string newResNotes = string.Empty;
 
-    private IEnumerable<Reservation> FilteredReservations => DataService.Reservations
-        .Where(r => (selectedTimeSlot == "All" || r.TimeSlot == selectedTimeSlot) && 
-                    r.Status != ReservationStatus.Completed && 
-                    r.Status != ReservationStatus.Cancelled);
+    private Microsoft.AspNetCore.SignalR.Client.HubConnection? resHubConn;
+    private List<ApiReservation> apiReservations = new();
 
-    protected override void OnInitialized()
+    private IEnumerable<Reservation> FilteredReservations
+    {
+        get
+        {
+            if (apiReservations.Any())
+            {
+                return apiReservations
+                    .Where(r => r.Status != 3 && // Cancelled maps to 3 (backend cancelled)
+                                r.Status != 2 && // Let's use 2 as completed
+                                (selectedTimeSlot == "All" || FormatTimeSlot(r.ReservationTime) == selectedTimeSlot))
+                    .Select(r => new Reservation
+                    {
+                        Id = r.Id,
+                        CustomerName = r.CustomerName,
+                        TimeSlot = FormatTimeSlot(r.ReservationTime),
+                        TableNumber = ParseTableNumber(r.TableNumber),
+                        Covers = r.PartySize,
+                        Status = MapBackendStatus(r.Status),
+                        Notes = r.SpecialNotes ?? ""
+                    });
+            }
+
+            return DataService.Reservations
+                .Where(r => (selectedTimeSlot == "All" || r.TimeSlot == selectedTimeSlot) && 
+                            r.Status != ReservationStatus.Completed && 
+                            r.Status != ReservationStatus.Cancelled);
+        }
+    }
+
+    private ReservationStatus MapBackendStatus(int status) => status switch
+    {
+        1 => ReservationStatus.Confirmed,
+        2 => ReservationStatus.Seated, // CheckedIn maps to Seated
+        3 => ReservationStatus.Cancelled,
+        _ => ReservationStatus.Confirmed
+    };
+
+    private int ParseTableNumber(string tableNumberStr)
+    {
+        if (string.IsNullOrWhiteSpace(tableNumberStr)) return 1;
+        var clean = tableNumberStr.Replace("T-", "").Replace("T", "").Trim();
+        if (int.TryParse(clean, out var num)) return num;
+        return 1;
+    }
+
+    private string FormatTimeSlot(DateTime dt)
+    {
+        var hour = dt.Hour;
+        if (hour < 11) return "09:00 AM";
+        if (hour < 13) return "11:30 AM";
+        if (hour < 18) return "02:00 PM";
+        return "07:30 PM";
+    }
+
+    protected override async Task OnInitializedAsync()
     {
         DataService.OnChange += StateHasChanged;
+
+        await LoadReservationsAsync();
+
+        try
+        {
+            resHubConn = ApiService.CreateHubConnection("/hubs/reservations");
+            resHubConn.On<ApiReservation>("ReservationUpdated", async (payload) =>
+            {
+                await LoadReservationsAsync();
+                await InvokeAsync(StateHasChanged);
+            });
+
+            await resHubConn.StartAsync();
+            try
+            {
+                await resHubConn.SendAsync("JoinReservationsGroup");
+            }
+            catch {}
+        }
+        catch
+        {
+            // Fallback
+        }
+    }
+
+    private async Task LoadReservationsAsync()
+    {
+        try
+        {
+            var resList = await ApiService.GetReservationsAsync();
+            if (resList != null)
+            {
+                apiReservations = resList;
+            }
+        }
+        catch {}
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -482,7 +571,25 @@
 
     private Reservation? GetReservationForTable(int tableNo)
     {
-        // Get active reservation for specified table in current time slot context
+        var apiRes = apiReservations
+            .FirstOrDefault(r => ParseTableNumber(r.TableNumber) == tableNo && 
+                                 r.Status != 3 && // Cancelled
+                                 (selectedTimeSlot == "All" || FormatTimeSlot(r.ReservationTime) == selectedTimeSlot));
+
+        if (apiRes != null)
+        {
+            return new Reservation
+            {
+                Id = apiRes.Id,
+                CustomerName = apiRes.CustomerName,
+                TimeSlot = FormatTimeSlot(apiRes.ReservationTime),
+                TableNumber = tableNo,
+                Covers = apiRes.PartySize,
+                Status = MapBackendStatus(apiRes.Status),
+                Notes = apiRes.SpecialNotes ?? ""
+            };
+        }
+
         return DataService.Reservations
             .FirstOrDefault(r => r.TableNumber == tableNo && 
                                  r.Status != ReservationStatus.Completed && 
@@ -530,43 +637,74 @@
         activeSelectedRes = null;
     }
 
-    private void SeatSelected()
+    private async Task SeatSelected()
     {
         if (activeSelectedRes != null)
         {
+            await ApiService.UpdateReservationStatusAsync(activeSelectedRes.Id, 2); // 2 = CheckedIn/Seated
+
             DataService.UpdateReservationStatus(activeSelectedRes.Id, ReservationStatus.Seated);
             DataService.AddNotification("Table Status", $"{activeSelectedRes.CustomerName} has been seated at Table {activeSelectedRes.TableNumber}", "info");
+            
+            await LoadReservationsAsync();
         }
     }
 
-    private void CompleteSelected()
+    private async Task CompleteSelected()
     {
         if (activeSelectedRes != null)
         {
+            await ApiService.UpdateReservationStatusAsync(activeSelectedRes.Id, 3); // Update status to archive/cancel/complete
+            
             DataService.UpdateReservationStatus(activeSelectedRes.Id, ReservationStatus.Completed);
             DataService.AddNotification("Table Cleared", $"Table {activeSelectedRes.TableNumber} is now vacant and clean", "success");
+            
             ClearSelected();
+            await LoadReservationsAsync();
         }
     }
 
-    private void CancelSelected()
+    private async Task CancelSelected()
     {
         if (activeSelectedRes != null)
         {
+            await ApiService.UpdateReservationStatusAsync(activeSelectedRes.Id, 3); // Cancelled
+
             DataService.UpdateReservationStatus(activeSelectedRes.Id, ReservationStatus.Cancelled);
             DataService.AddNotification("Booking Cancelled", $"Reservation for {activeSelectedRes.CustomerName} has been cancelled.", "warning");
+            
             ClearSelected();
+            await LoadReservationsAsync();
         }
     }
 
-    private void SubmitReservation()
+    private async Task SubmitReservation()
     {
         if (string.IsNullOrWhiteSpace(newResName)) return;
 
         var slot = selectedTimeSlot == "All" ? "02:00 PM" : selectedTimeSlot;
+        
+        DateTime resTime = DateTime.Today;
+        if (slot == "09:00 AM") resTime = resTime.AddHours(9);
+        else if (slot == "11:30 AM") resTime = resTime.AddHours(11).AddMinutes(30);
+        else if (slot == "02:00 PM") resTime = resTime.AddHours(14);
+        else if (slot == "07:30 PM") resTime = resTime.AddHours(19).AddMinutes(30);
+
+        var tableStr = $"T-{selectedTableNo:D2}";
+        await ApiService.CreateReservationAsync(
+            newResName,
+            "+15550000",
+            "guest@example.com",
+            tableStr,
+            newResCovers,
+            resTime,
+            newResNotes
+        );
+
         DataService.AddReservation(newResName, slot, selectedTableNo, newResCovers, newResNotes);
         
         ClearSelected();
+        await LoadReservationsAsync();
     }
 
     private string GetResBadgeClass(ReservationStatus status) => status switch
@@ -581,5 +719,9 @@
     public void Dispose()
     {
         DataService.OnChange -= StateHasChanged;
+        if (resHubConn != null)
+        {
+            _ = resHubConn.DisposeAsync();
+        }
     }
 }

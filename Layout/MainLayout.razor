@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @inject MockDataService DataService
 @inject UI.Services.AuthService AuthService
+@inject UI.Services.ApiService ApiService
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
 @implements IDisposable
@@ -179,6 +180,37 @@ else
             </div>
         </div>
 
+        <!-- Real-Time Floating Toasts Overlay -->
+        <div class="toast-container">
+            @foreach (var toast in toasts)
+            {
+                <div class="toast-box @toast.Type animate-fade-in">
+                    <div class="toast-icon-wrap">
+                        @if (toast.Type == "success")
+                        {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        }
+                        else if (toast.Type == "warning")
+                        {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                        }
+                        else if (toast.Type == "error")
+                        {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                        }
+                        else
+                        {
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                        }
+                    </div>
+                    <div class="toast-content-wrapper">
+                        <span class="toast-title">@toast.Title</span>
+                        <span class="toast-desc">@toast.Message</span>
+                    </div>
+                </div>
+            }
+        </div>
+
         <!-- Raycast AI Assistant Drawer -->
         <UI.Components.AiAssistant IsVisible="@isAiAssistantOpen" OnClose="CloseAiAssistant" />
     </div>
@@ -191,6 +223,24 @@ else
     private bool isAiAssistantOpen = false;
     private bool isPageLoading = false;
     private DotNetObjectReference<MainLayout>? dotnetRef;
+
+    private Microsoft.AspNetCore.SignalR.Client.HubConnection? notifHubConnection;
+    private List<ToastMessage> toasts = new();
+
+    public class ToastMessage
+    {
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+        public string Title { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+        public string Type { get; set; } = "info";
+        public DateTime Timestamp { get; set; } = DateTime.Now;
+    }
+
+    public class NotificationPayload
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Message { get; set; } = string.Empty;
+    }
 
     private bool IsAuthPage
     {
@@ -219,6 +269,45 @@ else
         dotnetRef = DotNetObjectReference.Create(this);
 
         await AuthService.InitializeAsync();
+
+        try
+        {
+            notifHubConnection = ApiService.CreateHubConnection("/hubs/notifications");
+            notifHubConnection.On<NotificationPayload>("ReceiveNotification", async (payload) =>
+            {
+                DataService.AddNotification(payload.Title, payload.Message, "info");
+                await ShowToastAsync(payload.Title, payload.Message, "info");
+            });
+
+            await notifHubConnection.StartAsync();
+        }
+        catch
+        {
+            // Offline fallback
+        }
+    }
+
+    private async Task ShowToastAsync(string title, string message, string type)
+    {
+        var toast = new ToastMessage { Title = title, Message = message, Type = type };
+        toasts.Add(toast);
+        await InvokeAsync(StateHasChanged);
+        
+        try
+        {
+            await JS.InvokeVoidAsync("playNotificationSound");
+        }
+        catch { }
+
+        // Remove after 4 seconds
+        var timer = new System.Threading.Timer(_ =>
+        {
+            InvokeAsync(() =>
+            {
+                toasts.Remove(toast);
+                StateHasChanged();
+            });
+        }, null, 4000, System.Threading.Timeout.Infinite);
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -300,5 +389,10 @@ else
         AuthService.OnAuthStateChanged -= StateHasChanged;
         Navigation.LocationChanged -= OnLocationChanged;
         dotnetRef?.Dispose();
+
+        if (notifHubConnection != null)
+        {
+            _ = notifHubConnection.DisposeAsync();
+        }
     }
 }

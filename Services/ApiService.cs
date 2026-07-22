@@ -80,6 +80,21 @@ public class ApiOrderItem
     public string? SpecialInstructions { get; set; }
 }
 
+public class ApiReservation
+{
+    public string Id { get; set; } = string.Empty;
+    public string? CustomerId { get; set; }
+    public string CustomerName { get; set; } = string.Empty;
+    public string CustomerPhone { get; set; } = string.Empty;
+    public string CustomerEmail { get; set; } = string.Empty;
+    public string TableId { get; set; } = string.Empty;
+    public string TableNumber { get; set; } = string.Empty;
+    public int PartySize { get; set; }
+    public DateTime ReservationTime { get; set; }
+    public int Status { get; set; }
+    public string? SpecialNotes { get; set; }
+}
+
 public class ApiService
 {
     private readonly HttpClient _httpClient;
@@ -192,6 +207,62 @@ public class ApiService
         catch
         {
             return null;
+        }
+    }
+
+    public async Task<List<ApiReservation>> GetReservationsAsync()
+    {
+        try
+        {
+            EnsureAuthHeader();
+            var items = await _httpClient.GetFromJsonAsync<List<ApiReservation>>("api/v1/reservations");
+            return items ?? new List<ApiReservation>();
+        }
+        catch
+        {
+            return new List<ApiReservation>();
+        }
+    }
+
+    public async Task<ApiReservation?> CreateReservationAsync(string customerName, string customerPhone, string customerEmail, string tableId, int partySize, DateTime reservationTime, string? specialNotes = null)
+    {
+        try
+        {
+            EnsureAuthHeader();
+            var payload = new
+            {
+                CustomerName = customerName,
+                CustomerPhone = customerPhone,
+                CustomerEmail = customerEmail,
+                TableId = tableId,
+                PartySize = partySize,
+                ReservationTime = reservationTime,
+                SpecialNotes = specialNotes
+            };
+            var response = await _httpClient.PostAsJsonAsync("api/v1/reservations", payload);
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<ApiReservation>();
+            }
+            return null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async Task<bool> UpdateReservationStatusAsync(string id, int status)
+    {
+        try
+        {
+            EnsureAuthHeader();
+            var response = await _httpClient.PatchAsJsonAsync($"api/v1/reservations/{id}/status", new { Status = status });
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
         }
     }
 
