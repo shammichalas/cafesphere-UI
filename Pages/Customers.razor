@@ -1,6 +1,7 @@
 @page "/customers"
 @attribute [Authorize(Roles = "SuperAdmin,Admin,Manager,Cashier")]
 @inject MockDataService DataService
+@inject UI.Services.ApiService ApiService
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -20,7 +21,7 @@
             </div>
             <div class="cs-divider"></div>
             <div class="cs-box">
-                <span class="v text-secondary">850</span>
+                <span class="v text-secondary">@TotalCount</span>
                 <span class="l">Total Registered Members</span>
             </div>
         </div>
@@ -28,104 +29,40 @@
 
     <!-- Customer cards list -->
     <div class="customers-grid">
-        <!-- Customer 1 -->
-        <div class="customer-card glass-card hover-lift">
-            <div class="card-identity">
-                <div class="avatar-letter gold">M</div>
-                <div class="meta">
-                    <span class="c-name font-semibold text-primary">Marc Andreessen</span>
-                    <span class="c-email">marc@a16z.com</span>
+        @foreach (var cust in CustomerCards)
+        {
+            <div class="customer-card glass-card hover-lift">
+                <div class="card-identity">
+                    <div class="avatar-letter @cust.Tier.ToLower()">@cust.Name[0]</div>
+                    <div class="meta">
+                        <span class="c-name font-semibold text-primary">@cust.Name</span>
+                        <span class="c-email">@cust.Email</span>
+                    </div>
+                    <span class="badge-pill @GetTierBadgeClass(cust.Tier) VIP">@cust.Tier</span>
                 </div>
-                <span class="badge-pill badge-warning VIP">VIP Gold</span>
-            </div>
-            
-            <div class="card-progress">
-                <div class="prog-label">
-                    <span>Loyalty Progress</span>
-                    <span class="font-semibold">480 / 500 Points</span>
+                
+                <div class="card-progress">
+                    <div class="prog-label">
+                        <span>Loyalty Progress</span>
+                        <span class="font-semibold">@cust.Points / @cust.MaxPoints Points</span>
+                    </div>
+                    <div class="prog-bar-track">
+                        <div class="prog-bar-fill @cust.Tier.ToLower()" style="width: @(cust.Points * 100 / cust.MaxPoints)%"></div>
+                    </div>
                 </div>
-                <div class="prog-bar-track">
-                    <div class="prog-bar-fill gold" style="width: 96%"></div>
-                </div>
-            </div>
 
-            <div class="card-summary">
-                <div class="stat">
-                    <span class="lbl">Last Order</span>
-                    <span class="val font-semibold">$12.96 (Signature Espresso)</span>
-                </div>
-                <div class="stat">
-                    <span class="lbl">Total Visits</span>
-                    <span class="val font-semibold">142 visits</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Customer 2 -->
-        <div class="customer-card glass-card hover-lift">
-            <div class="card-identity">
-                <div class="avatar-letter platinum">J</div>
-                <div class="meta">
-                    <span class="c-name font-semibold text-primary">Jack Dorsey</span>
-                    <span class="c-email">jack@block.xyz</span>
-                </div>
-                <span class="badge-pill badge-info VIP">Platinum</span>
-            </div>
-            
-            <div class="card-progress">
-                <div class="prog-label">
-                    <span>Loyalty Progress</span>
-                    <span class="font-semibold">820 / 1000 Points</span>
-                </div>
-                <div class="prog-bar-track">
-                    <div class="prog-bar-fill platinum" style="width: 82%"></div>
+                <div class="card-summary">
+                    <div class="stat">
+                        <span class="lbl">Last Order</span>
+                        <span class="val font-semibold">@cust.LastOrder</span>
+                    </div>
+                    <div class="stat">
+                        <span class="lbl">Total Visits</span>
+                        <span class="val font-semibold">@cust.Visits visits</span>
+                    </div>
                 </div>
             </div>
-
-            <div class="card-summary">
-                <div class="stat">
-                    <span class="lbl">Last Order</span>
-                    <span class="val font-semibold">$14.85 (Cafe Latte)</span>
-                </div>
-                <div class="stat">
-                    <span class="lbl">Total Visits</span>
-                    <span class="val font-semibold">215 visits</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Customer 3 -->
-        <div class="customer-card glass-card hover-lift">
-            <div class="card-identity">
-                <div class="avatar-letter silver">P</div>
-                <div class="meta">
-                    <span class="c-name font-semibold text-primary">Paul Graham</span>
-                    <span class="c-email">pg@ycombinator.com</span>
-                </div>
-                <span class="badge-pill badge-success VIP">Silver</span>
-            </div>
-            
-            <div class="card-progress">
-                <div class="prog-label">
-                    <span>Loyalty Progress</span>
-                    <span class="font-semibold">240 / 300 Points</span>
-                </div>
-                <div class="prog-bar-track">
-                    <div class="prog-bar-fill silver" style="width: 80%"></div>
-                </div>
-            </div>
-
-            <div class="card-summary">
-                <div class="stat">
-                    <span class="lbl">Last Order</span>
-                    <span class="val font-semibold">$11.15 (Cold Brew)</span>
-                </div>
-                <div class="stat">
-                    <span class="lbl">Total Visits</span>
-                    <span class="val font-semibold">78 visits</span>
-                </div>
-            </div>
-        </div>
+        }
     </div>
 </div>
 
@@ -303,11 +240,63 @@
 </style>
 
 @code {
-    private int GoldTierCount => 1;
+    private List<ApiCustomer> apiCustomers = new();
 
-    protected override void OnInitialized()
+    private IEnumerable<CustomerCardModel> CustomerCards
+    {
+        get
+        {
+            if (apiCustomers.Any())
+            {
+                return apiCustomers.Select(c => new CustomerCardModel
+                {
+                    Name = c.FullName,
+                    Email = c.Email,
+                    Tier = c.MembershipTier,
+                    Points = c.LoyaltyPoints,
+                    MaxPoints = c.MembershipTier.Equals("Gold", StringComparison.OrdinalIgnoreCase) ? 500 : (c.MembershipTier.Equals("Platinum", StringComparison.OrdinalIgnoreCase) ? 1000 : 300),
+                    LastOrder = c.TotalSpent > 0 ? $"Spent ${c.TotalSpent:F2}" : "No visits recorded",
+                    Visits = c.LoyaltyPoints / 5 > 0 ? c.LoyaltyPoints / 5 : 1
+                });
+            }
+
+            return new List<CustomerCardModel>
+            {
+                new() { Name = "Marc Andreessen", Email = "marc@a16z.com", Tier = "Gold", Points = 480, MaxPoints = 500, LastOrder = "$12.96 (Signature Espresso)", Visits = 142 },
+                new() { Name = "Jack Dorsey", Email = "jack@block.xyz", Tier = "Platinum", Points = 820, MaxPoints = 1000, LastOrder = "$14.85 (Cafe Latte)", Visits = 215 },
+                new() { Name = "Paul Graham", Email = "pg@ycombinator.com", Tier = "Silver", Points = 240, MaxPoints = 300, LastOrder = "$11.15 (Cold Brew)", Visits = 78 }
+            };
+        }
+    }
+
+    private string GetTierBadgeClass(string tier) => tier.ToLower() switch
+    {
+        "gold" => "badge-warning",
+        "platinum" => "badge-info",
+        "silver" => "badge-success",
+        _ => "badge-glass"
+    };
+
+    private int GoldTierCount => CustomerCards.Count(c => c.Tier.Equals("Gold", StringComparison.OrdinalIgnoreCase));
+    private int TotalCount => CustomerCards.Count();
+
+    protected override async Task OnInitializedAsync()
     {
         DataService.OnChange += StateHasChanged;
+        await LoadCustomersAsync();
+    }
+
+    private async Task LoadCustomersAsync()
+    {
+        try
+        {
+            var items = await ApiService.GetCustomersAsync();
+            if (items != null)
+            {
+                apiCustomers = items;
+            }
+        }
+        catch {}
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -318,5 +307,16 @@
     public void Dispose()
     {
         DataService.OnChange -= StateHasChanged;
+    }
+
+    public class CustomerCardModel
+    {
+        public string Name { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string Tier { get; set; } = "Silver";
+        public int Points { get; set; }
+        public int MaxPoints { get; set; }
+        public string LastOrder { get; set; } = string.Empty;
+        public int Visits { get; set; }
     }
 }

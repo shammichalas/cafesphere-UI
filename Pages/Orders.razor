@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @inject MockDataService DataService
 @inject UI.Services.AuthService AuthService
+@inject UI.Services.ApiService ApiService
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -474,12 +475,41 @@
     private string sortBy = "Time";
     private bool sortDescending = true;
     private string expandedOrder = string.Empty;
+    private List<ApiOrder> apiOrders = new();
 
     private IEnumerable<Order> FilteredOrders
     {
         get
         {
-            var query = DataService.Orders.AsEnumerable();
+            IEnumerable<Order> source;
+            if (apiOrders.Any())
+            {
+                source = apiOrders.Select(o => new Order
+                {
+                    Id = o.Id,
+                    TicketNumber = o.OrderNumber,
+                    CustomerName = o.CustomerName,
+                    Status = (OrderStatus)o.Status,
+                    Subtotal = o.SubTotal,
+                    Tax = o.TaxAmount,
+                    Discount = o.DiscountAmount,
+                    Total = o.TotalAmount,
+                    PaymentMethod = o.PaymentStatus == 1 ? "Credit Card" : "Cash",
+                    CreatedAt = o.CreatedAt,
+                    Items = o.Items.Select(i => new OrderItem
+                    {
+                        Item = new MenuItem { Name = i.ProductName, Price = i.UnitPrice },
+                        Quantity = i.Quantity,
+                        Notes = i.SpecialInstructions
+                    }).ToList()
+                });
+            }
+            else
+            {
+                source = DataService.Orders;
+            }
+
+            var query = source.AsEnumerable();
 
             // Customer Role Data Ownership Isolation
             if (AuthService.CurrentUser != null && AuthService.CurrentUser.Role == "Customer")
@@ -526,9 +556,23 @@
         }
     }
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         DataService.OnChange += StateHasChanged;
+        await LoadOrdersAsync();
+    }
+
+    private async Task LoadOrdersAsync()
+    {
+        try
+        {
+            var items = await ApiService.GetOrdersAsync();
+            if (items != null)
+            {
+                apiOrders = items;
+            }
+        }
+        catch {}
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

@@ -1,6 +1,7 @@
 @page "/employees"
 @attribute [Authorize(Roles = "SuperAdmin,Admin,Manager")]
 @inject MockDataService DataService
+@inject UI.Services.ApiService ApiService
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -20,7 +21,7 @@
             </div>
             <div class="st-divider"></div>
             <div class="st-box">
-                <span class="v text-secondary">@DataService.Employees.Count</span>
+                <span class="v text-secondary">@totalEmployeesCount</span>
                 <span class="l">Active Roster</span>
             </div>
         </div>
@@ -28,7 +29,7 @@
 
     <!-- Employee Cards Grid -->
     <div class="staff-grid">
-        @foreach (var emp in DataService.Employees)
+        @foreach (var emp in EmployeesList)
         {
             <div class="employee-card glass-card hover-lift @(emp.IsOnDuty ? "on-duty" : "off-duty")">
                 <div class="card-top">
@@ -224,11 +225,53 @@
 </style>
 
 @code {
-    private int onDutyCount => DataService.Employees.Count(e => e.IsOnDuty);
+    private List<ApiEmployee> apiEmployees = new();
 
-    protected override void OnInitialized()
+    private IEnumerable<Employee> EmployeesList
+    {
+        get
+        {
+            if (apiEmployees.Any())
+            {
+                return apiEmployees.Select(e => new Employee
+                {
+                    Id = e.Id,
+                    Name = e.FullName,
+                    Role = e.Position,
+                    IsOnDuty = e.IsActive,
+                    ActiveShift = e.Department == "Front Desk" ? "08:00 AM - 04:00 PM" : "09:00 AM - 05:00 PM",
+                    HoursWorkedThisWeek = 38.5m,
+                    ImageUrl = e.Position.Contains("Cashier") 
+                        ? "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" 
+                        : (e.Position.Contains("Manager") 
+                            ? "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150"
+                            : "https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=150")
+                });
+            }
+            return DataService.Employees;
+        }
+    }
+
+    private int onDutyCount => EmployeesList.Count(e => e.IsOnDuty);
+    private int totalEmployeesCount => EmployeesList.Count();
+
+    protected override async Task OnInitializedAsync()
     {
         DataService.OnChange += StateHasChanged;
+        await LoadEmployeesAsync();
+    }
+
+    private async Task LoadEmployeesAsync()
+    {
+        try
+        {
+            var items = await ApiService.GetEmployeesAsync();
+            if (items != null)
+            {
+                apiEmployees = items;
+            }
+        }
+        catch {}
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

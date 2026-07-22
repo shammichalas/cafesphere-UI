@@ -1,6 +1,7 @@
 @page "/finance"
 @attribute [Authorize(Roles = "SuperAdmin,Admin,Manager")]
 @inject MockDataService DataService
+@inject UI.Services.ApiService ApiService
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -70,7 +71,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach (var record in DataService.FinanceRecords.OrderByDescending(f => f.Timestamp))
+                        @foreach (var record in FinanceRecordsList.OrderByDescending(f => f.Timestamp))
                         {
                             <tr class="hover-row">
                                 <td>@record.Timestamp.ToString("MMM dd, hh:mm tt")</td>
@@ -152,20 +153,56 @@
 </style>
 
 @code {
+    private List<ApiExpense> apiExpenses = new();
+
+    private IEnumerable<FinanceRecord> FinanceRecordsList
+    {
+        get
+        {
+            if (apiExpenses.Any())
+            {
+                return apiExpenses.Select(e => new FinanceRecord
+                {
+                    Id = e.Id,
+                    Type = "Expense",
+                    Category = e.Category,
+                    Amount = e.Amount,
+                    Timestamp = e.ExpenseDate,
+                    Description = e.Title
+                });
+            }
+            return DataService.FinanceRecords;
+        }
+    }
+
     // Computed totals
-    private decimal totalRevenue => DataService.FinanceRecords
+    private decimal totalRevenue => FinanceRecordsList
         .Where(f => f.Type == "Revenue")
         .Sum(f => f.Amount);
 
-    private decimal totalExpense => DataService.FinanceRecords
+    private decimal totalExpense => FinanceRecordsList
         .Where(f => f.Type == "Expense")
         .Sum(f => f.Amount);
 
     private decimal netCashFlow => totalRevenue - totalExpense;
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         DataService.OnChange += StateHasChanged;
+        await LoadExpensesAsync();
+    }
+
+    private async Task LoadExpensesAsync()
+    {
+        try
+        {
+            var items = await ApiService.GetExpensesAsync();
+            if (items != null)
+            {
+                apiExpenses = items;
+            }
+        }
+        catch {}
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

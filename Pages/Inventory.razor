@@ -1,6 +1,7 @@
 @page "/inventory"
 @attribute [Authorize(Roles = "SuperAdmin,Admin,Manager")]
 @inject MockDataService DataService
+@inject UI.Services.ApiService ApiService
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -16,7 +17,7 @@
         
         <div class="inv-summary">
             <div class="sum-box">
-                <span class="v text-primary">@DataService.Inventory.Count</span>
+                <span class="v text-primary">@totalSKUCount</span>
                 <span class="l">Total SKU</span>
             </div>
             <div class="sum-divider"></div>
@@ -214,19 +215,59 @@
     // Restock control
     private string restockTargetId = string.Empty;
     private int restockQty = 10;
+    private List<ApiInventoryItem> apiInventory = new();
 
-    private int criticalItemsCount => DataService.Inventory
+    private IEnumerable<InventoryItem> InventoryList
+    {
+        get
+        {
+            if (apiInventory.Any())
+            {
+                return apiInventory.Select(i => new InventoryItem
+                {
+                    Id = i.Id,
+                    Name = i.ItemName,
+                    SKU = i.SKU,
+                    Category = i.Category,
+                    StockLevel = (int)i.CurrentStock,
+                    ReorderPoint = (int)i.MinimumStock,
+                    Unit = i.UnitOfMeasure,
+                    CostPrice = i.CostPerUnit,
+                    SellingPrice = 0
+                });
+            }
+            return DataService.Inventory;
+        }
+    }
+
+    private int criticalItemsCount => InventoryList
         .Count(i => i.StockLevel <= i.ReorderPoint);
 
-    private IEnumerable<InventoryItem> FilteredInventory => DataService.Inventory
+    private int totalSKUCount => InventoryList.Count();
+
+    private IEnumerable<InventoryItem> FilteredInventory => InventoryList
         .Where(i => string.IsNullOrWhiteSpace(searchQuery) || 
                     i.Name.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) || 
                     i.SKU.Contains(searchQuery, StringComparison.OrdinalIgnoreCase) ||
                     i.Category.Contains(searchQuery, StringComparison.OrdinalIgnoreCase));
 
-    protected override void OnInitialized()
+    protected override async Task OnInitializedAsync()
     {
         DataService.OnChange += StateHasChanged;
+        await LoadInventoryAsync();
+    }
+
+    private async Task LoadInventoryAsync()
+    {
+        try
+        {
+            var items = await ApiService.GetInventoryItemsAsync();
+            if (items != null)
+            {
+                apiInventory = items;
+            }
+        }
+        catch {}
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

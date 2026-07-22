@@ -1,6 +1,7 @@
 @page "/analytics"
 @attribute [Authorize(Roles = "SuperAdmin,Admin,Manager")]
 @inject MockDataService DataService
+@inject UI.Services.ApiService ApiService
 @inject IJSRuntime JS
 @implements IDisposable
 
@@ -104,28 +105,36 @@
         <div class="glass-card chart-card">
             <div class="glass-card-header">
                 <div>
-                    <h3>Payment Mode Shares</h3>
-                    <span class="caption">Usage ratio of cash, card and tap checkouts</span>
+                    <h3>Top Performing Products</h3>
+                    <span class="caption">Best selling items ranked by total revenue</span>
                 </div>
             </div>
-            <div class="chart-canvas-doughnut">
-                <svg viewBox="0 0 200 200" width="140" height="140">
-                    <!-- Doughnut segments -->
-                    <!-- Card: 50% -->
-                    <circle cx="100" cy="100" r="70" fill="none" stroke="#173D33" stroke-width="24" stroke-dasharray="220 220" stroke-dashoffset="0"></circle>
-                    <!-- Tap: 35% -->
-                    <circle cx="100" cy="100" r="70" fill="none" stroke="#D4A85A" stroke-width="24" stroke-dasharray="154 220" stroke-dashoffset="-220"></circle>
-                    <!-- Cash: 15% -->
-                    <circle cx="100" cy="100" r="70" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="24" stroke-dasharray="66 220" stroke-dashoffset="-374"></circle>
-                    <!-- Hole inside -->
-                    <circle cx="100" cy="100" r="58" fill="white"></circle>
-                </svg>
+            <div class="chart-canvas-doughnut" style="padding-top: 10px;">
+                @if (apiMetrics?.TopProducts != null && apiMetrics.TopProducts.Any())
+                {
+                    <div class="top-products-list d-flex flex-column gap-2" style="width: 100%;">
+                        @foreach (var prod in apiMetrics.TopProducts.Take(3))
+                        {
+                            <div class="d-flex justify-content-between align-items-center p-2" style="background: rgba(0,0,0,0.02); border-radius: 8px;">
+                                <span>@prod.ProductName</span>
+                                <span class="font-semibold text-primary">$@prod.TotalRevenue.ToString("F2") (@prod.QuantitySold sold)</span>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <svg viewBox="0 0 200 200" width="140" height="140">
+                        <circle cx="100" cy="100" r="70" fill="none" stroke="#173D33" stroke-width="24" stroke-dasharray="220 220" stroke-dashoffset="0"></circle>
+                        <circle cx="100" cy="100" r="70" fill="none" stroke="#D4A85A" stroke-width="24" stroke-dasharray="154 220" stroke-dashoffset="-220"></circle>
+                        <circle cx="100" cy="100" r="58" fill="white"></circle>
+                    </svg>
 
-                <div class="doughnut-legend">
-                    <div class="dl-item"><span class="dl-color p"></span><span>Credit Cards (50%)</span></div>
-                    <div class="dl-item"><span class="dl-color s"></span><span>Mobile Tap (35%)</span></div>
-                    <div class="dl-item"><span class="dl-color m"></span><span>Cash Drawer (15%)</span></div>
-                </div>
+                    <div class="doughnut-legend">
+                        <div class="dl-item"><span class="dl-color p"></span><span>Signature Espresso (65%)</span></div>
+                        <div class="dl-item"><span class="dl-color s"></span><span>Butter Croissant (24%)</span></div>
+                    </div>
+                }
             </div>
         </div>
     </div>
@@ -223,9 +232,25 @@
 </style>
 
 @code {
-    protected override void OnInitialized()
+    private ApiDashboardMetrics? apiMetrics = null;
+
+    protected override async Task OnInitializedAsync()
     {
         DataService.OnChange += StateHasChanged;
+        await LoadAnalyticsAsync();
+    }
+
+    private async Task LoadAnalyticsAsync()
+    {
+        try
+        {
+            var metrics = await ApiService.GetDashboardMetricsAsync();
+            if (metrics != null)
+            {
+                apiMetrics = metrics;
+            }
+        }
+        catch {}
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

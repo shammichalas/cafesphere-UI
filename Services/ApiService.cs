@@ -282,4 +282,126 @@ public class ApiService
             .WithAutomaticReconnect()
             .Build();
     }
+
+    public async Task<List<ApiCustomer>> GetCustomersAsync()
+    {
+        try
+        {
+            EnsureAuthHeader();
+            var items = await _httpClient.GetFromJsonAsync<List<ApiCustomer>>("api/v1/customers");
+            return items ?? new List<ApiCustomer>();
+        }
+        catch
+        {
+            return new List<ApiCustomer>();
+        }
+    }
+
+    public async Task<List<ApiEmployee>> GetEmployeesAsync()
+    {
+        try
+        {
+            EnsureAuthHeader();
+            var items = await _httpClient.GetFromJsonAsync<List<ApiEmployee>>("api/v1/employees");
+            return items ?? new List<ApiEmployee>();
+        }
+        catch
+        {
+            return new List<ApiEmployee>();
+        }
+    }
+
+    public async Task<List<ApiExpense>> GetExpensesAsync()
+    {
+        try
+        {
+            EnsureAuthHeader();
+            var items = await _httpClient.GetFromJsonAsync<List<ApiExpense>>("api/v1/finance/expenses");
+            return items ?? new List<ApiExpense>();
+        }
+        catch
+        {
+            return new List<ApiExpense>();
+        }
+    }
+
+    public async Task<List<ApiOrder>> GetOrdersAsync()
+    {
+        try
+        {
+            EnsureAuthHeader();
+            var items = await _httpClient.GetFromJsonAsync<List<ApiOrder>>("api/v1/orders");
+            return items ?? new List<ApiOrder>();
+        }
+        catch
+        {
+            return new List<ApiOrder>();
+        }
+    }
+
+    public async Task<List<ApiInventoryItem>> GetInventoryItemsAsync()
+    {
+        try
+        {
+            EnsureAuthHeader();
+            var items = await _httpClient.GetFromJsonAsync<List<ApiInventoryItem>>("api/v1/inventory");
+            return items ?? new List<ApiInventoryItem>();
+        }
+        catch
+        {
+            return new List<ApiInventoryItem>();
+        }
+    }
+}
+
+public class ApiCustomer
+{
+    public string Id { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string Phone { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public int LoyaltyPoints { get; set; }
+    public decimal TotalSpent { get; set; }
+    public string MembershipTier { get; set; } = "Bronze";
+    public DateTime? LastVisitDate { get; set; }
+}
+
+public class ApiEmployee
+{
+    public string Id { get; set; } = string.Empty;
+    public string UserId { get; set; } = string.Empty;
+    public string EmployeeCode { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string Department { get; set; } = string.Empty;
+    public string Position { get; set; } = string.Empty;
+    public DateTime HireDate { get; set; }
+    public decimal MonthlySalary { get; set; }
+    public decimal HourlyRate { get; set; }
+    public bool IsActive { get; set; }
+}
+
+public class ApiExpense
+{
+    public string Id { get; set; } = string.Empty;
+    public string Title { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public DateTime ExpenseDate { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public string ApprovedBy { get; set; } = string.Empty;
+    public string? ReceiptUrl { get; set; }
+}
+
+public class ApiInventoryItem
+{
+    public string Id { get; set; } = string.Empty;
+    public string ItemName { get; set; } = string.Empty;
+    public string SKU { get; set; } = string.Empty;
+    public string Category { get; set; } = string.Empty;
+    public double CurrentStock { get; set; }
+    public double MinimumStock { get; set; }
+    public string UnitOfMeasure { get; set; } = string.Empty;
+    public decimal CostPerUnit { get; set; }
+    public int Status { get; set; }
+    public string? SupplierName { get; set; }
 }
