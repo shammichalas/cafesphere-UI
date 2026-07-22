@@ -28,6 +28,8 @@ The application integrates real-time **ASP.NET Core SignalR WebSockets** and fal
 
 -   **Runtime**: .NET 10 WebAssembly Standalone
 -   **Structure**: Blazor Razor Components
+-   **State & Real-Time Sync**: Managed via `MockDataService` fallbacks integrated with **ASP.NET Core SignalR WebSockets** for live bi-directional server synchronization.
+-   **Security & Authorization**: Enforced client-side via Blazor's `<CascadingAuthenticationState>` and `<AuthorizeRouteView>` mapping specific roles (`SuperAdmin`, `Admin`, `Manager`, `Cashier`, `KitchenStaff`) to separate modules.
 -   **Styling**: Custom CSS3 variables and resets (Zero Bootstrap, Tailwind, or Material libraries used)
 -   **Icons**: Lucide Icons CDN
 -   **Fonts**: Google Fonts (`Manrope`, `Inter`, `Plus Jakarta Sans`)
